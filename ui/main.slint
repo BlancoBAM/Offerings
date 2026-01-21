@@ -1,0 +1,1099 @@
+// ui/main.slint - Offerings UI - Dark Theme with Sidebar Navigation
+import { Button, LineEdit, ListView, ScrollView, VerticalBox, HorizontalBox, ComboBox, Slider } from "std-widgets.slint";
+
+// ==================== Data Structures ====================
+
+export struct PackageInfo {
+    id: string,
+    name: string,
+    summary: string,
+    source: string,
+    installed_version: string,
+    latest_version: string,
+    has_update: bool,
+    is_installed: bool,
+    icon_url: string,
+    rating: float,
+    install_date: int,  // Unix timestamp for sorting
+}
+
+export struct CategoryInfo {
+    id: string,
+    name: string,
+    icon: string,
+    package_count: int,
+}
+
+export struct DependencyItem {
+    id: string,
+    name: string,
+    version: string,
+    reason: string,
+}
+
+export struct AppSettings {
+    font_family: string,
+    font_size: float,
+    font_contrast: float,
+}
+
+// ==================== Color Palette ====================
+
+global AppColors {
+    // Main background - deep black
+    out property <color> bg-primary: #0a0a0a;
+    out property <color> bg-secondary: #121212;
+    out property <color> bg-tertiary: #1a1a1a;
+    
+    // Alternating list row colors
+    out property <color> row-even: #141414;
+    out property <color> row-odd: #1c1c1c;
+    
+    // Accent colors - subtle crimson/dark red
+    out property <color> accent-primary: #8b0000;
+    out property <color> accent-secondary: #a52a2a;
+    out property <color> accent-hover: #b22222;
+    
+    // Text colors
+    out property <color> text-primary: #e0e0e0;
+    out property <color> text-secondary: #a0a0a0;
+    out property <color> text-muted: #666666;
+    
+    // Borders
+    out property <color> border-primary: #333333;
+    out property <color> border-accent: #8b0000;
+    
+    // Status colors
+    out property <color> success: #2e7d32;
+    out property <color> warning: #ed6c02;
+    out property <color> error: #d32f2f;
+}
+
+// ==================== Components ====================
+
+component IconButton inherits Rectangle {
+    in property <string> icon-text;
+    in property <color> icon-color: AppColors.text-primary;
+    callback clicked();
+    
+    width: 36px;
+    height: 36px;
+    background: transparent;
+    border-radius: 4px;
+    
+    states [
+        hovered when touch.has-hover: {
+            background: AppColors.bg-tertiary;
+        }
+    ]
+    
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+    
+    Text {
+        text: icon-text;
+        color: icon-color;
+        font-size: 18px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}
+
+component ActionButton inherits Rectangle {
+    in property <string> text;
+    in property <bool> primary: false;
+    callback clicked();
+    
+    height: 32px;
+    min-width: 80px;
+    background: primary ? AppColors.accent-primary : AppColors.bg-tertiary;
+    border-width: 1px;
+    border-color: primary ? AppColors.accent-secondary : AppColors.border-primary;
+    border-radius: 4px;
+    
+    states [
+        hovered when touch.has-hover: {
+            background: primary ? AppColors.accent-hover : AppColors.bg-secondary;
+        }
+    ]
+    
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+    
+    Text {
+        text: root.text;
+        color: AppColors.text-primary;
+        font-size: 13px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}
+
+// Sidebar menu item
+component SidebarItem inherits Rectangle {
+    in property <string> label;
+    in property <string> icon;
+    in property <bool> selected: false;
+    in property <int> count: 0;
+    callback clicked();
+    
+    height: 40px;
+    background: selected ? AppColors.accent-primary : transparent;
+    border-radius: 6px;
+    
+    states [
+        hovered when touch.has-hover && !selected: {
+            background: AppColors.bg-tertiary;
+        }
+    ]
+    
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+    
+    HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 12px;
+        spacing: 10px;
+        
+        Text {
+            text: icon;
+            color: selected ? AppColors.text-primary : AppColors.text-secondary;
+            font-size: 16px;
+            vertical-alignment: center;
+        }
+        
+        Text {
+            text: label;
+            color: selected ? AppColors.text-primary : AppColors.text-secondary;
+            font-size: 14px;
+            vertical-alignment: center;
+            horizontal-stretch: 1;
+        }
+        
+        if count > 0: Rectangle {
+            width: 24px;
+            height: 20px;
+            background: AppColors.accent-secondary;
+            border-radius: 10px;
+            
+            Text {
+                text: count;
+                color: AppColors.text-primary;
+                font-size: 11px;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+    }
+}
+
+// Alternating row package list item
+component PackageListItem inherits Rectangle {
+    in property <PackageInfo> package;
+    in property <int> row-index;
+    in property <bool> show-install-button: true;
+    callback clicked();
+    callback install-clicked();
+    callback update-clicked();
+    callback uninstall-clicked();
+    
+    height: 56px;
+    background: mod(row-index, 2) == 0 ? AppColors.row-even : AppColors.row-odd;
+    
+    states [
+        hovered when touch.has-hover: {
+            background: AppColors.bg-tertiary;
+        }
+    ]
+    
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+    
+    HorizontalLayout {
+        padding: 12px;
+        spacing: 12px;
+        
+        // Icon placeholder
+        Rectangle {
+            width: 32px;
+            height: 32px;
+            background: AppColors.bg-secondary;
+            border-radius: 4px;
+            
+            Text {
+                text: "📦";
+                font-size: 18px;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+        
+        // Package info
+        VerticalLayout {
+            horizontal-stretch: 1;
+            spacing: 2px;
+            
+            Text {
+                text: package.name;
+                color: AppColors.text-primary;
+                font-size: 14px;
+                font-weight: 600;
+                overflow: elide;
+            }
+            
+            Text {
+                text: package.source + " • " + package.summary;
+                color: AppColors.text-secondary;
+                font-size: 12px;
+                overflow: elide;
+            }
+        }
+        
+        // Version info
+        VerticalLayout {
+            width: 80px;
+            spacing: 2px;
+            
+            if package.is-installed: Text {
+                text: package.installed-version;
+                color: AppColors.text-secondary;
+                font-size: 12px;
+                horizontal-alignment: right;
+            }
+            
+            if package.has-update: Text {
+                text: "→ " + package.latest-version;
+                color: AppColors.warning;
+                font-size: 11px;
+                horizontal-alignment: right;
+            }
+        }
+        
+        // Actions
+        HorizontalLayout {
+            spacing: 8px;
+            
+            if !package.is-installed && show-install-button: ActionButton {
+                text: "Install";
+                primary: true;
+                clicked => { root.install-clicked(); }
+            }
+            
+            if package.is-installed && package.has-update: ActionButton {
+                text: "Update";
+                clicked => { root.update-clicked(); }
+            }
+            
+            if package.is-installed: ActionButton {
+                text: "Remove";
+                clicked => { root.uninstall-clicked(); }
+            }
+        }
+    }
+}
+
+// Installed app item for Dependencies view (shows install date context)
+component InstalledAppItem inherits Rectangle {
+    in property <PackageInfo> package;
+    in property <int> row-index;
+    callback clicked();
+    
+    height: 52px;
+    background: mod(row-index, 2) == 0 ? AppColors.row-even : AppColors.row-odd;
+    
+    states [
+        hovered when touch.has-hover: {
+            background: AppColors.bg-tertiary;
+        }
+    ]
+    
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+    
+    HorizontalLayout {
+        padding: 12px;
+        spacing: 12px;
+        
+        Rectangle {
+            width: 32px;
+            height: 32px;
+            background: AppColors.bg-secondary;
+            border-radius: 4px;
+            
+            Text {
+                text: "📦";
+                font-size: 18px;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+        
+        VerticalLayout {
+            horizontal-stretch: 1;
+            spacing: 2px;
+            
+            Text {
+                text: package.name;
+                color: AppColors.text-primary;
+                font-size: 14px;
+                font-weight: 600;
+            }
+            
+            Text {
+                text: package.source + " • " + package.installed-version;
+                color: AppColors.text-secondary;
+                font-size: 12px;
+            }
+        }
+        
+        // Arrow indicator
+        Text {
+            text: "→";
+            color: AppColors.text-muted;
+            font-size: 16px;
+            vertical-alignment: center;
+        }
+    }
+}
+
+// Dependency item in detail view
+component DependencyListItem inherits Rectangle {
+    in property <DependencyItem> dep;
+    in property <int> row-index;
+    
+    height: 44px;
+    background: mod(row-index, 2) == 0 ? AppColors.row-even : AppColors.row-odd;
+    
+    HorizontalLayout {
+        padding: 12px;
+        spacing: 12px;
+        
+        Text {
+            text: dep.name;
+            color: AppColors.text-primary;
+            font-size: 13px;
+            horizontal-stretch: 1;
+        }
+        
+        Text {
+            text: dep.version;
+            color: AppColors.text-secondary;
+            font-size: 12px;
+            width: 100px;
+        }
+        
+        Text {
+            text: dep.reason;
+            color: AppColors.text-muted;
+            font-size: 11px;
+            width: 120px;
+            horizontal-alignment: right;
+        }
+    }
+}
+
+// Category section on home page
+component CategorySection inherits Rectangle {
+    in property <string> category-name;
+    in property <[PackageInfo]> packages;
+    callback package-clicked(string);
+    callback install-clicked(string);
+    
+    background: transparent;
+    
+    VerticalLayout {
+        spacing: 12px;
+        
+        Text {
+            text: category-name;
+            color: AppColors.text-primary;
+            font-size: 18px;
+            font-weight: 700;
+        }
+        
+        for pkg[idx] in packages: PackageListItem {
+            package: pkg;
+            row-index: idx;
+            clicked => { root.package-clicked(pkg.id); }
+            install-clicked => { root.install-clicked(pkg.id); }
+        }
+    }
+}
+
+// ==================== Pages ====================
+
+// Dependencies detail page - shows what deps were installed for a package
+component DependencyDetailPage inherits Rectangle {
+    in property <PackageInfo> package;
+    in property <[DependencyItem]> deps;
+    callback back-clicked();
+    
+    background: AppColors.bg-primary;
+    
+    VerticalLayout {
+        padding: 20px;
+        spacing: 16px;
+        
+        // Header with back button
+        HorizontalLayout {
+            spacing: 16px;
+            height: 40px;
+            
+            IconButton {
+                icon-text: "←";
+                clicked => { back-clicked(); }
+            }
+            
+            VerticalLayout {
+                Text {
+                    text: package.name;
+                    color: AppColors.text-primary;
+                    font-size: 20px;
+                    font-weight: 700;
+                }
+                
+                Text {
+                    text: "Version " + package.installed-version;
+                    color: AppColors.text-secondary;
+                    font-size: 13px;
+                }
+            }
+        }
+        
+        // Section header
+        Rectangle {
+            height: 36px;
+            background: AppColors.bg-secondary;
+            border-radius: 4px;
+            
+            HorizontalLayout {
+                padding-left: 12px;
+                padding-right: 12px;
+                
+                Text {
+                    text: "Dependencies installed with this package";
+                    color: AppColors.text-secondary;
+                    font-size: 13px;
+                    vertical-alignment: center;
+                    horizontal-stretch: 1;
+                }
+                
+                Text {
+                    text: deps.length + " items";
+                    color: AppColors.text-muted;
+                    font-size: 12px;
+                    vertical-alignment: center;
+                }
+            }
+        }
+        
+        // Dependencies list
+        ScrollView {
+            VerticalLayout {
+                for dep[idx] in deps: DependencyListItem {
+                    dep: dep;
+                    row-index: idx;
+                }
+            }
+        }
+    }
+}
+
+// Settings panel
+component SettingsPanel inherits Rectangle {
+    in-out property <float> font-size-value: 14.0;
+    in-out property <float> font-contrast-value: 1.0;
+    in property <[string]> available-fonts;
+    in-out property <string> selected-font: "System Default";
+    
+    background: AppColors.bg-primary;
+    
+    VerticalLayout {
+        padding: 20px;
+        spacing: 20px;
+        
+        Text {
+            text: "Accessibility Settings";
+            color: AppColors.text-primary;
+            font-size: 20px;
+            font-weight: 700;
+        }
+        
+        // Font family selector
+        VerticalLayout {
+            spacing: 8px;
+            
+            Text {
+                text: "Font Family";
+                color: AppColors.text-secondary;
+                font-size: 13px;
+            }
+            
+            ComboBox {
+                model: available-fonts;
+                current-value: selected-font;
+            }
+        }
+        
+        // Font size slider
+        VerticalLayout {
+            spacing: 8px;
+            
+            HorizontalLayout {
+                Text {
+                    text: "Font Size";
+                    color: AppColors.text-secondary;
+                    font-size: 13px;
+                    horizontal-stretch: 1;
+                }
+                
+                Text {
+                    text: round(font-size-value) + "px";
+                    color: AppColors.text-muted;
+                    font-size: 12px;
+                }
+            }
+            
+            Slider {
+                minimum: 10;
+                maximum: 24;
+                value <=> font-size-value;
+            }
+        }
+        
+        // Font contrast slider
+        VerticalLayout {
+            spacing: 8px;
+            
+            HorizontalLayout {
+                Text {
+                    text: "Font Contrast";
+                    color: AppColors.text-secondary;
+                    font-size: 13px;
+                    horizontal-stretch: 1;
+                }
+                
+                Text {
+                    text: round(font-contrast-value * 100) + "%";
+                    color: AppColors.text-muted;
+                    font-size: 12px;
+                }
+            }
+            
+            Slider {
+                minimum: 0.5;
+                maximum: 1.5;
+                value <=> font-contrast-value;
+            }
+        }
+    }
+}
+
+// ==================== Main Window ====================
+
+export component MainWindow inherits Window {
+    title: "Offerings";
+    background: AppColors.bg-primary;
+    preferred-width: 1200px;
+    preferred-height: 800px;
+    
+    // Data properties
+    in property <[CategoryInfo]> categories;
+    in property <[PackageInfo]> featured-lilith;
+    in property <[PackageInfo]> featured-audio;
+    in property <[PackageInfo]> featured-video;
+    in property <[PackageInfo]> featured-development;
+    in property <[PackageInfo]> featured-education;
+    in property <[PackageInfo]> featured-game;
+    in property <[PackageInfo]> featured-graphics;
+    in property <[PackageInfo]> featured-network;
+    in property <[PackageInfo]> featured-office;
+    in property <[PackageInfo]> featured-science;
+    in property <[PackageInfo]> featured-settings;
+    in property <[PackageInfo]> featured-system;
+    in property <[PackageInfo]> featured-utilities;
+    in property <[PackageInfo]> installed-packages;
+    in property <[PackageInfo]> recently-updated;
+    in property <[PackageInfo]> search-results;
+    in property <[DependencyItem]> selected-deps;
+    in property <[string]> available-fonts: ["System Default", "Sans", "Serif", "Monospace"];
+    
+    // State properties
+    in-out property <string> current-view: "home";
+    in-out property <string> search-query;
+    in-out property <PackageInfo> selected-package;
+    in-out property <bool> show-dep-detail: false;
+    in-out property <string> font-family: "System Default";
+    in-out property <float> font-size: 14.0;
+    in-out property <float> font-contrast: 1.0;
+    
+    // Callbacks
+    callback search-triggered(string);
+    callback install-clicked(string);
+    callback update-clicked(string);
+    callback uninstall-clicked(string);
+    callback update-all-clicked();
+    callback package-clicked(string);
+    callback category-selected(string);
+    callback view-dependencies(string);
+    
+    // Dependency detail view overlay
+    if show-dep-detail: DependencyDetailPage {
+        package: selected-package;
+        deps: selected-deps;
+        back-clicked => {
+            show-dep-detail = false;
+        }
+    }
+    
+    // Main layout
+    if !show-dep-detail: HorizontalLayout {
+        // Sidebar
+        Rectangle {
+            width: 220px;
+            background: AppColors.bg-secondary;
+            
+            VerticalLayout {
+                padding: 16px;
+                spacing: 4px;
+                
+                // App title
+                Text {
+                    text: "OFFERINGS";
+                    color: AppColors.accent-primary;
+                    font-size: 24px;
+                    font-weight: 900;
+                    horizontal-alignment: center;
+                }
+                
+                Rectangle { height: 16px; }  // Spacer
+                
+                // Navigation items
+                SidebarItem {
+                    label: "Lilith";
+                    icon: "🔮";
+                    selected: current-view == "lilith";
+                    clicked => { current-view = "lilith"; }
+                }
+                
+                Rectangle { height: 8px; }  // Section spacer
+                
+                SidebarItem {
+                    label: "Audio";
+                    icon: "🎵";
+                    selected: current-view == "audio";
+                    clicked => { current-view = "audio"; }
+                }
+                
+                SidebarItem {
+                    label: "Video";
+                    icon: "🎬";
+                    selected: current-view == "video";
+                    clicked => { current-view = "video"; }
+                }
+                
+                SidebarItem {
+                    label: "Development";
+                    icon: "💻";
+                    selected: current-view == "development";
+                    clicked => { current-view = "development"; }
+                }
+                
+                SidebarItem {
+                    label: "Education";
+                    icon: "📚";
+                    selected: current-view == "education";
+                    clicked => { current-view = "education"; }
+                }
+                
+                SidebarItem {
+                    label: "Games";
+                    icon: "🎮";
+                    selected: current-view == "game";
+                    clicked => { current-view = "game"; }
+                }
+                
+                SidebarItem {
+                    label: "Graphics";
+                    icon: "🎨";
+                    selected: current-view == "graphics";
+                    clicked => { current-view = "graphics"; }
+                }
+                
+                SidebarItem {
+                    label: "Network";
+                    icon: "🌐";
+                    selected: current-view == "network";
+                    clicked => { current-view = "network"; }
+                }
+                
+                SidebarItem {
+                    label: "Office";
+                    icon: "📄";
+                    selected: current-view == "office";
+                    clicked => { current-view = "office"; }
+                }
+                
+                SidebarItem {
+                    label: "Science";
+                    icon: "🔬";
+                    selected: current-view == "science";
+                    clicked => { current-view = "science"; }
+                }
+                
+                SidebarItem {
+                    label: "Settings";
+                    icon: "⚙️";
+                    selected: current-view == "settings-cat";
+                    clicked => { current-view = "settings-cat"; }
+                }
+                
+                SidebarItem {
+                    label: "System";
+                    icon: "🖥️";
+                    selected: current-view == "system";
+                    clicked => { current-view = "system"; }
+                }
+                
+                SidebarItem {
+                    label: "Utilities";
+                    icon: "🔧";
+                    selected: current-view == "utilities";
+                    clicked => { current-view = "utilities"; }
+                }
+                
+                Rectangle { height: 16px; }  // Section spacer
+                
+                // Separator line
+                Rectangle {
+                    height: 1px;
+                    background: AppColors.border-primary;
+                }
+                
+                Rectangle { height: 16px; }
+                
+                SidebarItem {
+                    label: "Installed";
+                    icon: "✓";
+                    selected: current-view == "installed";
+                    count: installed-packages.length;
+                    clicked => { current-view = "installed"; }
+                }
+                
+                SidebarItem {
+                    label: "Dependencies";
+                    icon: "🔗";
+                    selected: current-view == "dependencies";
+                    clicked => { current-view = "dependencies"; }
+                }
+                
+                Rectangle { vertical-stretch: 1; }  // Push settings to bottom
+                
+                // Separator
+                Rectangle {
+                    height: 1px;
+                    background: AppColors.border-primary;
+                }
+                
+                Rectangle { height: 8px; }
+                
+                SidebarItem {
+                    label: "App Settings";
+                    icon: "🎛️";
+                    selected: current-view == "app-settings";
+                    clicked => { current-view = "app-settings"; }
+                }
+            }
+        }
+        
+        // Main content area
+        Rectangle {
+            horizontal-stretch: 1;
+            background: AppColors.bg-primary;
+            
+            VerticalLayout {
+                // Top bar with search
+                Rectangle {
+                    height: 60px;
+                    background: AppColors.bg-secondary;
+                    
+                    HorizontalLayout {
+                        padding: 12px;
+                        spacing: 16px;
+                        
+                        // Search box
+                        Rectangle {
+                            horizontal-stretch: 1;
+                            max-width: 500px;
+                            background: AppColors.bg-tertiary;
+                            border-width: 1px;
+                            border-color: AppColors.border-primary;
+                            border-radius: 6px;
+                            
+                            HorizontalLayout {
+                                padding-left: 12px;
+                                padding-right: 12px;
+                                spacing: 8px;
+                                
+                                Text {
+                                    text: "🔍";
+                                    font-size: 14px;
+                                    vertical-alignment: center;
+                                }
+                                
+                                search-input := LineEdit {
+                                    horizontal-stretch: 1;
+                                    placeholder-text: "Search packages...";
+                                    text <=> search-query;
+                                    accepted => {
+                                        current-view = "search";
+                                        search-triggered(search-query);
+                                    }
+                                }
+                            }
+                        }
+                        
+                        Rectangle { horizontal-stretch: 1; }  // Spacer
+                    }
+                }
+                
+                // Content area
+                ScrollView {
+                    VerticalLayout {
+                        padding: 20px;
+                        spacing: 24px;
+                        
+                        // Home view - shows all categories with featured apps
+                        if current-view == "home": VerticalLayout {
+                            spacing: 32px;
+                            
+                            if featured-lilith.length > 0: CategorySection {
+                                category-name: "🔮 Lilith";
+                                packages: featured-lilith;
+                                package-clicked(id) => { package-clicked(id); }
+                                install-clicked(id) => { install-clicked(id); }
+                            }
+                            
+                            if recently-updated.length > 0: CategorySection {
+                                category-name: "🆕 Recently Updated";
+                                packages: recently-updated;
+                                package-clicked(id) => { package-clicked(id); }
+                                install-clicked(id) => { install-clicked(id); }
+                            }
+                            
+                            if featured-audio.length > 0: CategorySection {
+                                category-name: "🎵 Audio";
+                                packages: featured-audio;
+                                package-clicked(id) => { package-clicked(id); }
+                                install-clicked(id) => { install-clicked(id); }
+                            }
+                            
+                            if featured-video.length > 0: CategorySection {
+                                category-name: "🎬 Video";
+                                packages: featured-video;
+                                package-clicked(id) => { package-clicked(id); }
+                                install-clicked(id) => { install-clicked(id); }
+                            }
+                            
+                            if featured-development.length > 0: CategorySection {
+                                category-name: "💻 Development";
+                                packages: featured-development;
+                                package-clicked(id) => { package-clicked(id); }
+                                install-clicked(id) => { install-clicked(id); }
+                            }
+                            
+                            if featured-graphics.length > 0: CategorySection {
+                                category-name: "🎨 Graphics";
+                                packages: featured-graphics;
+                                package-clicked(id) => { package-clicked(id); }
+                                install-clicked(id) => { install-clicked(id); }
+                            }
+                            
+                            if featured-game.length > 0: CategorySection {
+                                category-name: "🎮 Games";
+                                packages: featured-game;
+                                package-clicked(id) => { package-clicked(id); }
+                                install-clicked(id) => { install-clicked(id); }
+                            }
+                        }
+                        
+                        // Category views
+                        if current-view == "lilith": CategorySection {
+                            category-name: "🔮 Lilith";
+                            packages: featured-lilith;
+                            package-clicked(id) => { package-clicked(id); }
+                            install-clicked(id) => { install-clicked(id); }
+                        }
+                        
+                        if current-view == "audio": CategorySection {
+                            category-name: "🎵 Audio";
+                            packages: featured-audio;
+                            package-clicked(id) => { package-clicked(id); }
+                            install-clicked(id) => { install-clicked(id); }
+                        }
+                        
+                        if current-view == "video": CategorySection {
+                            category-name: "🎬 Video";
+                            packages: featured-video;
+                            package-clicked(id) => { package-clicked(id); }
+                            install-clicked(id) => { install-clicked(id); }
+                        }
+                        
+                        if current-view == "development": CategorySection {
+                            category-name: "💻 Development";
+                            packages: featured-development;
+                            package-clicked(id) => { package-clicked(id); }
+                            install-clicked(id) => { install-clicked(id); }
+                        }
+                        
+                        if current-view == "education": CategorySection {
+                            category-name: "📚 Education";
+                            packages: featured-education;
+                            package-clicked(id) => { package-clicked(id); }
+                            install-clicked(id) => { install-clicked(id); }
+                        }
+                        
+                        if current-view == "game": CategorySection {
+                            category-name: "🎮 Games";
+                            packages: featured-game;
+                            package-clicked(id) => { package-clicked(id); }
+                            install-clicked(id) => { install-clicked(id); }
+                        }
+                        
+                        if current-view == "graphics": CategorySection {
+                            category-name: "🎨 Graphics";
+                            packages: featured-graphics;
+                            package-clicked(id) => { package-clicked(id); }
+                            install-clicked(id) => { install-clicked(id); }
+                        }
+                        
+                        if current-view == "network": CategorySection {
+                            category-name: "🌐 Network";
+                            packages: featured-network;
+                            package-clicked(id) => { package-clicked(id); }
+                            install-clicked(id) => { install-clicked(id); }
+                        }
+                        
+                        if current-view == "office": CategorySection {
+                            category-name: "📄 Office";
+                            packages: featured-office;
+                            package-clicked(id) => { package-clicked(id); }
+                            install-clicked(id) => { install-clicked(id); }
+                        }
+                        
+                        if current-view == "science": CategorySection {
+                            category-name: "🔬 Science";
+                            packages: featured-science;
+                            package-clicked(id) => { package-clicked(id); }
+                            install-clicked(id) => { install-clicked(id); }
+                        }
+                        
+                        if current-view == "settings-cat": CategorySection {
+                            category-name: "⚙️ Settings";
+                            packages: featured-settings;
+                            package-clicked(id) => { package-clicked(id); }
+                            install-clicked(id) => { install-clicked(id); }
+                        }
+                        
+                        if current-view == "system": CategorySection {
+                            category-name: "🖥️ System";
+                            packages: featured-system;
+                            package-clicked(id) => { package-clicked(id); }
+                            install-clicked(id) => { install-clicked(id); }
+                        }
+                        
+                        if current-view == "utilities": CategorySection {
+                            category-name: "🔧 Utilities";
+                            packages: featured-utilities;
+                            package-clicked(id) => { package-clicked(id); }
+                            install-clicked(id) => { install-clicked(id); }
+                        }
+                        
+                        // Installed packages view
+                        if current-view == "installed": VerticalLayout {
+                            spacing: 16px;
+                            
+                            Text {
+                                text: "Installed Packages";
+                                color: AppColors.text-primary;
+                                font-size: 20px;
+                                font-weight: 700;
+                            }
+                            
+                            for pkg[idx] in installed-packages: PackageListItem {
+                                package: pkg;
+                                row-index: idx;
+                                show-install-button: false;
+                                clicked => { package-clicked(pkg.id); }
+                                update-clicked => { update-clicked(pkg.id); }
+                                uninstall-clicked => { uninstall-clicked(pkg.id); }
+                            }
+                        }
+                        
+                        // Dependencies view - shows user-installed apps sorted by install date
+                        if current-view == "dependencies": VerticalLayout {
+                            spacing: 16px;
+                            
+                            Text {
+                                text: "View Dependencies";
+                                color: AppColors.text-primary;
+                                font-size: 20px;
+                                font-weight: 700;
+                            }
+                            
+                            Text {
+                                text: "Select an installed application to view its dependencies";
+                                color: AppColors.text-secondary;
+                                font-size: 13px;
+                            }
+                            
+                            for pkg[idx] in installed-packages: InstalledAppItem {
+                                package: pkg;
+                                row-index: idx;
+                                clicked => {
+                                    selected-package = pkg;
+                                    view-dependencies(pkg.id);
+                                    show-dep-detail = true;
+                                }
+                            }
+                        }
+                        
+                        // Search results view
+                        if current-view == "search": VerticalLayout {
+                            spacing: 16px;
+                            
+                            Text {
+                                text: "Search Results for \"" + search-query + "\"";
+                                color: AppColors.text-primary;
+                                font-size: 20px;
+                                font-weight: 700;
+                            }
+                            
+                            for pkg[idx] in search-results: PackageListItem {
+                                package: pkg;
+                                row-index: idx;
+                                clicked => { package-clicked(pkg.id); }
+                                install-clicked => { install-clicked(pkg.id); }
+                                update-clicked => { update-clicked(pkg.id); }
+                                uninstall-clicked => { uninstall-clicked(pkg.id); }
+                            }
+                        }
+                        
+                        // App Settings view
+                        if current-view == "app-settings": SettingsPanel {
+                            font-size-value <=> root.font-size;
+                            font-contrast-value <=> root.font-contrast;
+                            selected-font <=> root.font-family;
+                            available-fonts: available-fonts;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
