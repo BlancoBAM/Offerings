@@ -37,6 +37,11 @@ export struct AppSettings {
     font_contrast: float,
 }
 
+export struct SourceItem {
+    name: string,
+    url: string,
+}
+
 // ==================== Color Palette ====================
 
 global AppColors {
@@ -594,6 +599,427 @@ component SettingsPanel inherits Rectangle {
     }
 }
 
+// ==================== Settings Page ====================
+
+component SettingsPage inherits Rectangle {
+    in-out property <float> font-size-value: 14.0;
+    in-out property <string> font-color-value: "#e0e0e0";
+    in property <[string]> available-fonts;
+    in-out property <string> selected-font: "System Default";
+    in property <[SourceItem]> source-urls;
+    callback remove-source(string);
+    callback close-clicked();
+
+    private property <string> active-tab: "fonts";
+    private property <string> pending-remove-url: "";
+    private property <bool> show-confirm: false;
+
+    background: AppColors.bg-primary;
+    x: 0;
+    y: 0;
+    width: 100%;
+    height: 100%;
+
+    VerticalLayout {
+        // Header bar
+        Rectangle {
+            height: 56px;
+            background: AppColors.bg-secondary;
+            border-width: 0px;
+
+            HorizontalLayout {
+                padding-left: 16px;
+                padding-right: 16px;
+                spacing: 12px;
+
+                // Back / close button
+                IconButton {
+                    icon-text: "←";
+                    clicked => { root.close-clicked(); }
+                }
+
+                Text {
+                    text: "Settings";
+                    color: AppColors.text-primary;
+                    font-size: 22px;
+                    font-weight: 700;
+                    horizontal-stretch: 1;
+                    vertical-alignment: center;
+                }
+            }
+        }
+
+        // Tab bar
+        Rectangle {
+            height: 44px;
+            background: AppColors.bg-secondary;
+
+            HorizontalLayout {
+                padding-left: 16px;
+                spacing: 4px;
+
+                // Fonts tab
+                Rectangle {
+                    width: 80px;
+                    height: 44px;
+                    background: root.active-tab == "fonts" ? AppColors.bg-tertiary : transparent;
+                    border-radius: 6px;
+                    tab-fonts-touch := TouchArea {
+                        clicked => { root.active-tab = "fonts"; }
+                    }
+                    Text {
+                        text: "Fonts";
+                        color: root.active-tab == "fonts" ? AppColors.text-primary : AppColors.text-secondary;
+                        font-size: 14px;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                }
+
+                // Sources tab
+                Rectangle {
+                    width: 80px;
+                    height: 44px;
+                    background: root.active-tab == "sources" ? AppColors.bg-tertiary : transparent;
+                    border-radius: 6px;
+                    tab-sources-touch := TouchArea {
+                        clicked => { root.active-tab = "sources"; }
+                    }
+                    Text {
+                        text: "Sources";
+                        color: root.active-tab == "sources" ? AppColors.text-primary : AppColors.text-secondary;
+                        font-size: 14px;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+        }
+
+        // Tab content
+        if root.active-tab == "fonts": ScrollView {
+            VerticalLayout {
+                padding: 24px;
+                spacing: 24px;
+
+                // Font Family
+                VerticalLayout {
+                    spacing: 8px;
+                    Text {
+                        text: "Font Family";
+                        color: AppColors.text-secondary;
+                        font-size: 13px;
+                        font-weight: 600;
+                    }
+                    ComboBox {
+                        model: root.available-fonts;
+                        current-value: root.selected-font;
+                        selected(val) => { root.selected-font = val; }
+                    }
+                }
+
+                // Font Color
+                VerticalLayout {
+                    spacing: 8px;
+                    Text {
+                        text: "Font Color";
+                        color: AppColors.text-secondary;
+                        font-size: 13px;
+                        font-weight: 600;
+                    }
+                    HorizontalLayout {
+                        spacing: 10px;
+                        height: 40px;
+                        // Color swatch
+                        Rectangle {
+                            width: 40px;
+                            height: 40px;
+                            border-radius: 6px;
+                            border-width: 1px;
+                            border-color: AppColors.border-primary;
+                            background: AppColors.text-primary;
+                        }
+                        // Hex input
+                        Rectangle {
+                            horizontal-stretch: 1;
+                            height: 40px;
+                            background: AppColors.bg-tertiary;
+                            border-width: 1px;
+                            border-color: AppColors.border-primary;
+                            border-radius: 6px;
+                            HorizontalLayout {
+                                padding-left: 10px;
+                                padding-right: 10px;
+                                color-input := LineEdit {
+                                    horizontal-stretch: 1;
+                                    text: root.font-color-value;
+                                    placeholder-text: "#e0e0e0";
+                                    edited(val) => { root.font-color-value = val; }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Font Size
+                VerticalLayout {
+                    spacing: 8px;
+                    Text {
+                        text: "Font Size";
+                        color: AppColors.text-secondary;
+                        font-size: 13px;
+                        font-weight: 600;
+                    }
+                    HorizontalLayout {
+                        spacing: 12px;
+                        height: 40px;
+                        font-slider := Slider {
+                            horizontal-stretch: 1;
+                            minimum: 10;
+                            maximum: 32;
+                            value <=> root.font-size-value;
+                        }
+                        // px spinner display
+                        Rectangle {
+                            width: 100px;
+                            height: 40px;
+                            background: AppColors.bg-tertiary;
+                            border-width: 1px;
+                            border-color: AppColors.border-primary;
+                            border-radius: 6px;
+                            HorizontalLayout {
+                                padding-left: 8px;
+                                padding-right: 4px;
+                                spacing: 2px;
+                                Text {
+                                    horizontal-stretch: 1;
+                                    text: round(root.font-size-value) + "px";
+                                    color: AppColors.text-primary;
+                                    font-size: 13px;
+                                    vertical-alignment: center;
+                                    horizontal-alignment: center;
+                                }
+                                VerticalLayout {
+                                    spacing: 1px;
+                                    width: 20px;
+                                    // Up
+                                    Rectangle {
+                                        height: 19px;
+                                        background: transparent;
+                                        border-radius: 2px;
+                                        states [
+                                            hovered when up-ta.has-hover: {
+                                                background: AppColors.bg-primary;
+                                            }
+                                        ]
+                                        up-ta := TouchArea {
+                                            clicked => {
+                                                root.font-size-value = min(root.font-size-value + 1, 32);
+                                            }
+                                        }
+                                        Text {
+                                            text: "▲";
+                                            font-size: 8px;
+                                            color: AppColors.text-muted;
+                                            horizontal-alignment: center;
+                                            vertical-alignment: center;
+                                        }
+                                    }
+                                    // Down
+                                    Rectangle {
+                                        height: 19px;
+                                        background: transparent;
+                                        border-radius: 2px;
+                                        states [
+                                            hovered when down-ta.has-hover: {
+                                                background: AppColors.bg-primary;
+                                            }
+                                        ]
+                                        down-ta := TouchArea {
+                                            clicked => {
+                                                root.font-size-value = max(root.font-size-value - 1, 10);
+                                            }
+                                        }
+                                        Text {
+                                            text: "▼";
+                                            font-size: 8px;
+                                            color: AppColors.text-muted;
+                                            horizontal-alignment: center;
+                                            vertical-alignment: center;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    // Range labels
+                    HorizontalLayout {
+                        Text { text: "10px"; color: AppColors.text-muted; font-size: 11px; horizontal-stretch: 1; }
+                        Text { text: "32px"; color: AppColors.text-muted; font-size: 11px; }
+                    }
+                }
+            }
+        }
+
+        if root.active-tab == "sources": ScrollView {
+            VerticalLayout {
+                padding: 24px;
+                spacing: 4px;
+
+                Text {
+                    text: "Package Sources";
+                    color: AppColors.text-secondary;
+                    font-size: 13px;
+                    font-weight: 600;
+                }
+
+                Rectangle { height: 12px; }
+
+                for src[idx] in root.source-urls: Rectangle {
+                    height: 56px;
+                    background: mod(idx, 2) == 0 ? AppColors.row-even : AppColors.row-odd;
+                    border-radius: 6px;
+                    HorizontalLayout {
+                        padding-left: 16px;
+                        padding-right: 12px;
+                        spacing: 12px;
+                        VerticalLayout {
+                            horizontal-stretch: 1;
+                            alignment: center;
+                            Text {
+                                text: src.name;
+                                color: AppColors.text-primary;
+                                font-size: 14px;
+                                font-weight: 600;
+                            }
+                            Text {
+                                text: src.url;
+                                color: AppColors.text-muted;
+                                font-size: 11px;
+                            }
+                        }
+                        // Trash icon
+                        Rectangle {
+                            width: 36px;
+                            height: 36px;
+                            border-radius: 6px;
+                            background: transparent;
+                            states [
+                                hovered when trash-ta.has-hover: {
+                                    background: AppColors.error;
+                                }
+                            ]
+                            trash-ta := TouchArea {
+                                clicked => {
+                                    root.pending-remove-url = src.url;
+                                    root.show-confirm = true;
+                                }
+                            }
+                            Text {
+                                text: "🗑";
+                                font-size: 16px;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Confirmation dialog overlay
+    if root.show-confirm: Rectangle {
+        x: 0;
+        y: 0;
+        width: 100%;
+        height: 100%;
+        background: #00000099;
+
+        Rectangle {
+            width: 340px;
+            height: 160px;
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+            background: AppColors.bg-secondary;
+            border-radius: 10px;
+            border-width: 1px;
+            border-color: AppColors.border-primary;
+
+            VerticalLayout {
+                padding: 24px;
+                spacing: 16px;
+                Text {
+                    text: "Remove this source?";
+                    color: AppColors.text-primary;
+                    font-size: 16px;
+                    font-weight: 700;
+                    horizontal-alignment: center;
+                }
+                Text {
+                    text: "This is session-only and can be undone by restarting.";
+                    color: AppColors.text-secondary;
+                    font-size: 12px;
+                    horizontal-alignment: center;
+                    wrap: word-wrap;
+                }
+                HorizontalLayout {
+                    spacing: 12px;
+                    // Cancel
+                    Rectangle {
+                        horizontal-stretch: 1;
+                        height: 36px;
+                        background: AppColors.bg-tertiary;
+                        border-radius: 6px;
+                        border-width: 1px;
+                        border-color: AppColors.border-primary;
+                        states [
+                            hovered when cancel-ta.has-hover: {
+                                background: AppColors.bg-primary;
+                            }
+                        ]
+                        cancel-ta := TouchArea {
+                            clicked => { root.show-confirm = false; }
+                        }
+                        Text {
+                            text: "Cancel";
+                            color: AppColors.text-primary;
+                            font-size: 14px;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                    }
+                    // Remove
+                    Rectangle {
+                        horizontal-stretch: 1;
+                        height: 36px;
+                        background: AppColors.error;
+                        border-radius: 6px;
+                        states [
+                            hovered when remove-ta.has-hover: {
+                                background: AppColors.accent-secondary;
+                            }
+                        ]
+                        remove-ta := TouchArea {
+                            clicked => {
+                                root.remove-source(root.pending-remove-url);
+                                root.show-confirm = false;
+                            }
+                        }
+                        Text {
+                            text: "Remove";
+                            color: #ffffff;
+                            font-size: 14px;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 // ==================== Main Window ====================
 
 export component MainWindow inherits Window {
@@ -601,7 +1027,7 @@ export component MainWindow inherits Window {
     background: AppColors.bg-primary;
     preferred-width: 1200px;
     preferred-height: 800px;
-    
+
     // Data properties
     in property <[CategoryInfo]> categories;
     in property <[PackageInfo]> featured-lilith;
@@ -622,16 +1048,19 @@ export component MainWindow inherits Window {
     in property <[PackageInfo]> search-results;
     in property <[DependencyItem]> selected-deps;
     in property <[string]> available-fonts: ["System Default", "Sans", "Serif", "Monospace"];
-    
+    in-out property <[SourceItem]> source-urls;
+
     // State properties
     in-out property <string> current-view: "home";
     in-out property <string> search-query;
     in-out property <PackageInfo> selected-package;
     in-out property <bool> show-dep-detail: false;
+    in-out property <bool> show-settings: false;
     in-out property <string> font-family: "System Default";
     in-out property <float> font-size: 14.0;
     in-out property <float> font-contrast: 1.0;
-    
+    in-out property <string> font-color: "#e0e0e0";
+
     // Callbacks
     callback search-triggered(string);
     callback install-clicked(string);
@@ -641,27 +1070,39 @@ export component MainWindow inherits Window {
     callback package-clicked(string);
     callback category-selected(string);
     callback view-dependencies(string);
-    
+    callback remove-source-clicked(string);
+
+    // Settings overlay (top layer)
+    if show-settings: SettingsPage {
+        available-fonts: root.available-fonts;
+        source-urls: root.source-urls;
+        font-size-value <=> root.font-size;
+        font-color-value <=> root.font-color;
+        selected-font <=> root.font-family;
+        close-clicked => { root.show-settings = false; }
+        remove-source(url) => { root.remove-source-clicked(url); }
+    }
+
     // Dependency detail view overlay
-    if show-dep-detail: DependencyDetailPage {
+    if show-dep-detail && !show-settings: DependencyDetailPage {
         package: selected-package;
         deps: selected-deps;
         back-clicked => {
             show-dep-detail = false;
         }
     }
-    
+
     // Main layout
-    if !show-dep-detail: HorizontalLayout {
+    if !show-dep-detail && !show-settings: HorizontalLayout {
         // Sidebar
         Rectangle {
             width: 220px;
             background: AppColors.bg-secondary;
-            
+
             VerticalLayout {
                 padding: 16px;
                 spacing: 4px;
-                
+
                 // App title
                 Text {
                     text: "OFFERINGS";
@@ -670,9 +1111,9 @@ export component MainWindow inherits Window {
                     font-weight: 900;
                     horizontal-alignment: center;
                 }
-                
+
                 Rectangle { height: 16px; }  // Spacer
-                
+
                 // Navigation items
                 SidebarItem {
                     label: "Lilith";
@@ -859,6 +1300,29 @@ export component MainWindow inherits Window {
                         }
                         
                         Rectangle { horizontal-stretch: 1; }  // Spacer
+
+                        // Gear icon → opens Settings
+                        Rectangle {
+                            width: 36px;
+                            height: 36px;
+                            border-radius: 6px;
+                            background: transparent;
+                            states [
+                                hovered when gear-ta.has-hover: {
+                                    background: AppColors.bg-tertiary;
+                                }
+                            ]
+                            gear-ta := TouchArea {
+                                clicked => { show-settings = true; }
+                            }
+                            Text {
+                                text: "⚙";
+                                font-size: 18px;
+                                color: AppColors.text-secondary;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+                        }
                     }
                 }
                 

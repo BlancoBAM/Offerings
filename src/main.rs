@@ -9,12 +9,54 @@ mod notifications;
 mod transaction;
 
 use backend::BackendService;
-use ipc::{IpcCommand, IpcRequest, IpcResponse, IpcResponseData, IpcServer, PackageSummary, StatusData};
+use ipc::{
+    IpcCommand, IpcRequest, IpcResponse, IpcResponseData, IpcServer, PackageSummary, StatusData,
+};
 use model::{HomePageContent, PackageOperation};
+use slint::Model;
 use std::collections::HashMap;
+use std::process::Command;
 use std::sync::Arc;
 
 slint::include_modules!();
+
+/// Query system fonts via fc-list and return sorted, deduplicated family names
+fn get_system_fonts() -> Vec<String> {
+    let mut fonts = vec!["System Default".to_string()];
+    if let Ok(output) = Command::new("fc-list").args([":", "family"]).output() {
+        if output.status.success() {
+            let raw = String::from_utf8_lossy(&output.stdout);
+            let mut seen = std::collections::HashSet::new();
+            for line in raw.lines() {
+                for part in line.split(',') {
+                    let name = part.trim().to_string();
+                    if !name.is_empty() && seen.insert(name.clone()) {
+                        fonts.push(name);
+                    }
+                }
+            }
+            if fonts.len() > 1 {
+                let rest = &mut fonts[1..];
+                rest.sort_unstable();
+            }
+        }
+    }
+    fonts
+}
+
+/// Source label -> representative URL mapping
+fn source_url(label: &str) -> &'static str {
+    match label {
+        "APT" => "apt://local (Debian/Ubuntu repositories)",
+        "Flatpak" => "https://flathub.org",
+        "Snap" => "https://snapcraft.io",
+        "AppImage" => "https://appimage.github.io",
+        "Soar" => "https://github.com/pkgforge/soar",
+        "GitHub" => "https://api.github.com/repos",
+        "Offerings" => "file:///etc/offerings/custom",
+        _ => "unknown://",
+    }
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -29,19 +71,78 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ],
         category_showcases: {
             let mut map = HashMap::new();
-            map.insert("Lilith".to_string(), vec![]);  // Custom Lilith packages
-            map.insert("Audio".to_string(), vec!["apt:audacity".to_string(), "apt:ardour".to_string(), "apt:lmms".to_string()]);
-            map.insert("Video".to_string(), vec!["apt:vlc".to_string(), "apt:kdenlive".to_string(), "apt:obs-studio".to_string()]);
-            map.insert("Development".to_string(), vec!["apt:git".to_string(), "apt:vim".to_string(), "apt:code".to_string()]);
-            map.insert("Education".to_string(), vec!["apt:gcompris".to_string(), "apt:stellarium".to_string()]);
-            map.insert("Game".to_string(), vec!["apt:supertuxkart".to_string(), "apt:0ad".to_string()]);
-            map.insert("Graphics".to_string(), vec!["apt:gimp".to_string(), "apt:inkscape".to_string(), "apt:blender".to_string()]);
-            map.insert("Network".to_string(), vec!["apt:firefox".to_string(), "apt:chromium".to_string(), "apt:thunderbird".to_string()]);
-            map.insert("Office".to_string(), vec!["apt:libreoffice".to_string(), "apt:evince".to_string()]);
-            map.insert("Science".to_string(), vec!["apt:octave".to_string(), "apt:gnuplot".to_string()]);
+            map.insert("Lilith".to_string(), vec![]); // Custom Lilith packages
+            map.insert(
+                "Audio".to_string(),
+                vec![
+                    "apt:audacity".to_string(),
+                    "apt:ardour".to_string(),
+                    "apt:lmms".to_string(),
+                ],
+            );
+            map.insert(
+                "Video".to_string(),
+                vec![
+                    "apt:vlc".to_string(),
+                    "apt:kdenlive".to_string(),
+                    "apt:obs-studio".to_string(),
+                ],
+            );
+            map.insert(
+                "Development".to_string(),
+                vec![
+                    "apt:git".to_string(),
+                    "apt:vim".to_string(),
+                    "apt:code".to_string(),
+                ],
+            );
+            map.insert(
+                "Education".to_string(),
+                vec!["apt:gcompris".to_string(), "apt:stellarium".to_string()],
+            );
+            map.insert(
+                "Game".to_string(),
+                vec!["apt:supertuxkart".to_string(), "apt:0ad".to_string()],
+            );
+            map.insert(
+                "Graphics".to_string(),
+                vec![
+                    "apt:gimp".to_string(),
+                    "apt:inkscape".to_string(),
+                    "apt:blender".to_string(),
+                ],
+            );
+            map.insert(
+                "Network".to_string(),
+                vec![
+                    "apt:firefox".to_string(),
+                    "apt:chromium".to_string(),
+                    "apt:thunderbird".to_string(),
+                ],
+            );
+            map.insert(
+                "Office".to_string(),
+                vec!["apt:libreoffice".to_string(), "apt:evince".to_string()],
+            );
+            map.insert(
+                "Science".to_string(),
+                vec!["apt:octave".to_string(), "apt:gnuplot".to_string()],
+            );
             map.insert("Settings".to_string(), vec!["apt:gnome-tweaks".to_string()]);
-            map.insert("System".to_string(), vec!["apt:htop".to_string(), "apt:gnome-system-monitor".to_string()]);
-            map.insert("Utilities".to_string(), vec!["apt:gnome-calculator".to_string(), "apt:file-roller".to_string()]);
+            map.insert(
+                "System".to_string(),
+                vec![
+                    "apt:htop".to_string(),
+                    "apt:gnome-system-monitor".to_string(),
+                ],
+            );
+            map.insert(
+                "Utilities".to_string(),
+                vec![
+                    "apt:gnome-calculator".to_string(),
+                    "apt:file-roller".to_string(),
+                ],
+            );
             map
         },
     };
@@ -90,11 +191,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Check available sources
     let sources = backend.get_available_sources().await;
-    println!("Available package sources: {:?}", sources.iter().map(|s| s.label()).collect::<Vec<_>>());
+    println!(
+        "Available package sources: {:?}",
+        sources.iter().map(|s| s.label()).collect::<Vec<_>>()
+    );
 
     // Create Slint UI
     let ui = MainWindow::new()?;
     let backend_clone = backend.clone();
+
+    // Populate system fonts
+    let font_list: Vec<slint::SharedString> = get_system_fonts()
+        .into_iter()
+        .map(slint::SharedString::from)
+        .collect();
+    ui.set_available_fonts(slint::ModelRc::new(slint::VecModel::from(font_list)));
 
     // Populate initial data
     populate_ui(&ui, &backend).await;
@@ -244,15 +355,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             tokio::spawn(async move {
                 let deps = backend.get_dependency_tree(&pkg_id).await;
-                let dep_items: Vec<DependencyItem> = deps.into_iter().map(|d| {
-                    DependencyItem {
+                let dep_items: Vec<DependencyItem> = deps
+                    .into_iter()
+                    .map(|d| DependencyItem {
                         id: d.clone().into(),
                         name: d.split(':').last().unwrap_or(&d).to_string().into(),
                         version: "".into(),
                         reason: "dependency".into(),
-                    }
-                }).collect();
-                
+                    })
+                    .collect();
+
                 let _ = slint::invoke_from_event_loop(move || {
                     if let Some(ui) = ui_weak.upgrade() {
                         ui.set_selected_deps(slint::ModelRc::new(slint::VecModel::from(dep_items)));
@@ -278,6 +390,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
+    // Remove source handler — removes entry from the UI model for this session
+    ui.on_remove_source_clicked({
+        let ui_weak = ui.as_weak();
+        move |url_to_remove| {
+            let url_to_remove = url_to_remove.to_string();
+            let ui_weak = ui_weak.clone();
+            let _ = slint::invoke_from_event_loop(move || {
+                if let Some(ui) = ui_weak.upgrade() {
+                    let current: Vec<SourceItem> = ui.get_source_urls().iter().collect();
+                    let filtered: Vec<SourceItem> = current
+                        .into_iter()
+                        .filter(|s| s.url.as_str() != url_to_remove)
+                        .collect();
+                    ui.set_source_urls(slint::ModelRc::new(slint::VecModel::from(filtered)));
+                }
+            });
+        }
+    });
+
     println!("Offerings is running!");
     ui.run()?;
 
@@ -287,7 +418,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// Populate UI with initial data
 async fn populate_ui(ui: &MainWindow, backend: &BackendService) {
     let home_content = backend.get_home_content().await;
-    
+
     // Get packages by category
     let audio_pkgs = get_category_packages(backend, "Audio", &home_content).await;
     let video_pkgs = get_category_packages(backend, "Video", &home_content).await;
@@ -325,12 +456,30 @@ async fn populate_ui(ui: &MainWindow, backend: &BackendService) {
     // Recently updated packages
     let updates = backend.get_updates().await;
     ui.set_recently_updated(convert_to_slint_packages(updates));
+
+    // Populate source URLs for Settings -> Sources tab
+    let available_sources = backend.get_available_sources().await;
+    let source_items: Vec<SourceItem> = available_sources
+        .iter()
+        .map(|src| {
+            let label = src.label();
+            SourceItem {
+                name: label.into(),
+                url: source_url(label).into(),
+            }
+        })
+        .collect();
+    ui.set_source_urls(slint::ModelRc::new(slint::VecModel::from(source_items)));
 }
 
 /// Get packages for a category
-async fn get_category_packages(backend: &BackendService, category: &str, home_content: &HomePageContent) -> Vec<model::Package> {
+async fn get_category_packages(
+    backend: &BackendService,
+    category: &str,
+    home_content: &HomePageContent,
+) -> Vec<model::Package> {
     let mut packages = Vec::new();
-    
+
     if let Some(pkg_ids) = home_content.category_showcases.get(category) {
         for id in pkg_ids {
             if let Some(pkg) = backend.get_package(id).await {
@@ -338,7 +487,7 @@ async fn get_category_packages(backend: &BackendService, category: &str, home_co
             }
         }
     }
-    
+
     // Also get packages from cache that match this category
     let category_pkgs = backend.get_apps_by_category(category).await;
     for pkg in category_pkgs.into_iter().take(10) {
@@ -346,7 +495,7 @@ async fn get_category_packages(backend: &BackendService, category: &str, home_co
             packages.push(pkg);
         }
     }
-    
+
     packages
 }
 
@@ -378,22 +527,23 @@ async fn handle_ipc_request(backend: &BackendService, request: IpcRequest) -> Ip
                 )),
             }
         }
-        IpcRequest::GetPackage { id } => {
-            match backend.get_package(&id).await {
-                Some(pkg) => IpcResponse {
-                    success: true,
-                    message: "OK".to_string(),
-                    data: Some(IpcResponseData::Package(PackageSummary::from(&pkg))),
-                },
-                None => IpcResponse {
-                    success: false,
-                    message: "Package not found".to_string(),
-                    data: None,
-                },
-            }
-        }
+        IpcRequest::GetPackage { id } => match backend.get_package(&id).await {
+            Some(pkg) => IpcResponse {
+                success: true,
+                message: "OK".to_string(),
+                data: Some(IpcResponseData::Package(PackageSummary::from(&pkg))),
+            },
+            None => IpcResponse {
+                success: false,
+                message: "Package not found".to_string(),
+                data: None,
+            },
+        },
         IpcRequest::Install { id } => {
-            match backend.execute_operation(PackageOperation::Install(id.clone())).await {
+            match backend
+                .execute_operation(PackageOperation::Install(id.clone()))
+                .await
+            {
                 Ok(result) => IpcResponse {
                     success: result.success,
                     message: result.message.clone(),
@@ -407,7 +557,10 @@ async fn handle_ipc_request(backend: &BackendService, request: IpcRequest) -> Ip
             }
         }
         IpcRequest::Uninstall { id } => {
-            match backend.execute_operation(PackageOperation::Uninstall(id)).await {
+            match backend
+                .execute_operation(PackageOperation::Uninstall(id))
+                .await
+            {
                 Ok(result) => IpcResponse {
                     success: result.success,
                     message: result.message.clone(),
@@ -421,7 +574,10 @@ async fn handle_ipc_request(backend: &BackendService, request: IpcRequest) -> Ip
             }
         }
         IpcRequest::Update { id } => {
-            match backend.execute_operation(PackageOperation::Update(id)).await {
+            match backend
+                .execute_operation(PackageOperation::Update(id))
+                .await
+            {
                 Ok(result) => IpcResponse {
                     success: result.success,
                     message: result.message.clone(),
@@ -468,20 +624,18 @@ async fn handle_ipc_request(backend: &BackendService, request: IpcRequest) -> Ip
                 )),
             }
         }
-        IpcRequest::Refresh => {
-            match backend.refresh_cache().await {
-                Ok(_) => IpcResponse {
-                    success: true,
-                    message: "Cache refreshed".to_string(),
-                    data: None,
-                },
-                Err(e) => IpcResponse {
-                    success: false,
-                    message: e.to_string(),
-                    data: None,
-                },
-            }
-        }
+        IpcRequest::Refresh => match backend.refresh_cache().await {
+            Ok(_) => IpcResponse {
+                success: true,
+                message: "Cache refreshed".to_string(),
+                data: None,
+            },
+            Err(e) => IpcResponse {
+                success: false,
+                message: e.to_string(),
+                data: None,
+            },
+        },
         IpcRequest::Quit => IpcResponse {
             success: true,
             message: "Goodbye".to_string(),
@@ -507,7 +661,7 @@ fn convert_to_slint_packages(packages: Vec<model::Package>) -> slint::ModelRc<Pa
                 is_installed: pkg.is_installed,
                 icon_url: pkg.metadata.icon_url.unwrap_or_default().into(),
                 rating: pkg.metadata.rating.unwrap_or(0.0),
-                install_date: 0,  // TODO: Get actual install date from database
+                install_date: 0, // TODO: Get actual install date from database
             }
         })
         .collect();
