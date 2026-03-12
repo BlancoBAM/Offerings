@@ -20,6 +20,8 @@ pub enum NotificationType {
     OperationStarted { operation: String, package_name: String },
     /// Batch operation completed
     BatchComplete { operation: String, count: usize, failed: usize },
+    /// Fallback installation succeeded
+    FallbackSuccess { package_name: String, source: String, original_source: String },
 }
 
 /// Configuration for the notification system
@@ -131,6 +133,7 @@ impl NotificationManager {
             NotificationType::BatchComplete { failed, .. } => {
                 if *failed > 0 { self.config.notify_failure } else { self.config.notify_success }
             }
+            NotificationType::FallbackSuccess { .. } => self.config.notify_success,
         }
     }
 
@@ -200,6 +203,12 @@ impl NotificationManager {
                     )
                 }
             }
+            NotificationType::FallbackSuccess { package_name, source, original_source } => (
+                "Installation Successful (Fallback)".to_string(),
+                format!("{} was installed from {} after {} failed.", package_name, source, original_source),
+                Urgency::Normal,
+                "emblem-default",
+            ),
         }
     }
 

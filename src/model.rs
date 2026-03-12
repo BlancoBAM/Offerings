@@ -5,36 +5,30 @@ use std::collections::HashMap;
 /// Package source types
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum PackageSource {
-    APT,
     Flatpak,
-    Snap,
     AppImage,
-    Soar,
-    GitHubRelease,
+    Pacstall,
+    Snap,
     OfferingsCustom,
 }
 
 impl PackageSource {
     pub fn label(&self) -> &'static str {
         match self {
-            Self::APT => "APT",
             Self::Flatpak => "Flatpak",
-            Self::Snap => "Snap",
             Self::AppImage => "AppImage",
-            Self::Soar => "Soar",
-            Self::GitHubRelease => "GitHub",
+            Self::Pacstall => "Pacstall",
+            Self::Snap => "Snap",
             Self::OfferingsCustom => "Offerings",
         }
     }
 
     pub fn icon(&self) -> &'static str {
         match self {
-            Self::APT => "package-x-generic",
             Self::Flatpak => "application-x-flatpak",
-            Self::Snap => "snap-symbolic",
             Self::AppImage => "application-x-executable",
-            Self::Soar => "package-x-generic",
-            Self::GitHubRelease => "github",
+            Self::Pacstall => "package-x-generic",
+            Self::Snap => "snap-symbolic",
             Self::OfferingsCustom => "emblem-package",
         }
     }
@@ -42,12 +36,10 @@ impl PackageSource {
     /// Get all available sources
     pub fn all() -> Vec<Self> {
         vec![
-            Self::APT,
             Self::Flatpak,
-            Self::Snap,
             Self::AppImage,
-            Self::Soar,
-            Self::GitHubRelease,
+            Self::Pacstall,
+            Self::Snap,
             Self::OfferingsCustom,
         ]
     }
@@ -95,36 +87,20 @@ impl PackageVersion {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct DependencyInfo {
-    pub dependencies: Vec<String>,         // Package IDs this depends on
-    pub reverse_dependencies: Vec<String>, // Package IDs that depend on this
-    pub install_reason: InstallReason,
-}
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
-pub enum InstallReason {
-    #[default]
-    Explicit,           // User-installed app
-    Dependency(String), // Auto-installed as dependency for package ID
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Package {
     pub identity: PackageIdentity,
     pub metadata: PackageMetadata,
     pub version: PackageVersion,
-    pub dependency_info: DependencyInfo,
     pub is_installed: bool,
+    pub alternatives: Vec<PackageIdentity>,
 }
 
 impl Package {
-    pub fn is_dependency(&self) -> bool {
-        matches!(self.dependency_info.install_reason, InstallReason::Dependency(_))
-    }
-
     pub fn is_app(&self) -> bool {
-        !self.is_dependency() && !self.metadata.categories.is_empty()
+        !self.metadata.categories.is_empty()
     }
 
     /// Get the short ID without source prefix
@@ -211,6 +187,7 @@ pub struct AppDetailInfo {
     pub license: Option<String>,
     pub publisher: Option<String>,
     pub verified: bool,
+    pub alternatives: Vec<PackageIdentity>,
 }
 
 impl From<Package> for AppDetailInfo {
@@ -225,6 +202,7 @@ impl From<Package> for AppDetailInfo {
             license: None,
             publisher: None,
             verified: false,
+            alternatives: vec![],
         }
     }
 }
@@ -336,7 +314,6 @@ pub enum ViewState {
     Installed,
     Dependencies,
     Updates,
-    APT,
     Search,
     PackageDetail(String),
     Settings,
@@ -348,7 +325,6 @@ mod tests {
 
     #[test]
     fn test_package_source_label() {
-        assert_eq!(PackageSource::APT.label(), "APT");
         assert_eq!(PackageSource::Flatpak.label(), "Flatpak");
     }
 
@@ -367,9 +343,5 @@ mod tests {
         assert!(!version.has_update());
     }
 
-    #[test]
-    fn test_install_reason_default() {
-        let reason = InstallReason::default();
-        assert_eq!(reason, InstallReason::Explicit);
-    }
+
 }

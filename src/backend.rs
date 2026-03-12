@@ -1,10 +1,9 @@
 // src/backend.rs - Core Backend Service
 use crate::adapters::{
-    AptAdapter, AppImageAdapter, CustomAdapter, FlatpakAdapter, GitHubAdapter, PackageAdapter,
-    SnapAdapter, SoarAdapter,
+    AppImageAdapter, CustomAdapter, FlatpakAdapter, PackageAdapter,
+    PacstallAdapter, SnapAdapter,
 };
 use crate::db::Database;
-use crate::depgraph::DependencyGraph;
 use crate::model::{
     AppDetailInfo, HomePageContent, OperationResult, Package, PackageOperation, PackageSource,
 };
@@ -21,7 +20,6 @@ pub struct BackendService {
     package_cache: Arc<RwLock<HashMap<String, Package>>>,
     db: Arc<Database>,
     transaction_manager: Arc<TransactionManager>,
-    dep_graph: Arc<RwLock<DependencyGraph>>,
     notifications: Arc<NotificationManager>,
     home_content: HomePageContent,
 }
@@ -31,16 +29,13 @@ impl BackendService {
     pub fn new(home_content: HomePageContent) -> Result<Self, Box<dyn std::error::Error>> {
         let db = Arc::new(Database::new()?);
         let transaction_manager = Arc::new(TransactionManager::new(db.clone()));
-        let dep_graph = Arc::new(RwLock::new(DependencyGraph::new(db.clone())));
         let notifications = Arc::new(NotificationManager::new(Default::default()));
 
         let adapters: Vec<Arc<dyn PackageAdapter>> = vec![
-            Arc::new(AptAdapter::new()),
             Arc::new(FlatpakAdapter::new()),
+            Arc::new(AppImageAdapter::new()), // AM
+            Arc::new(PacstallAdapter::new()),
             Arc::new(SnapAdapter::new()),
-            Arc::new(AppImageAdapter::new()),
-            Arc::new(SoarAdapter::new()),
-            Arc::new(GitHubAdapter::new()),
             Arc::new(CustomAdapter::new()),
         ];
 
@@ -55,7 +50,6 @@ impl BackendService {
             package_cache: Arc::new(RwLock::new(HashMap::new())),
             db,
             transaction_manager,
-            dep_graph,
             notifications,
             home_content,
         })
@@ -68,7 +62,6 @@ impl BackendService {
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let db = Arc::new(Database::new()?);
         let transaction_manager = Arc::new(TransactionManager::new(db.clone()));
-        let dep_graph = Arc::new(RwLock::new(DependencyGraph::new(db.clone())));
         let notifications = Arc::new(NotificationManager::new(Default::default()));
 
         let mut adapter_map = HashMap::new();
@@ -82,7 +75,6 @@ impl BackendService {
             package_cache: Arc::new(RwLock::new(HashMap::new())),
             db,
             transaction_manager,
-            dep_graph,
             notifications,
             home_content,
         })
@@ -153,13 +145,43 @@ impl BackendService {
             }
         }
 
-        // Rebuild dependency graph
-        let mut dep_graph = self.dep_graph.write().await;
-        if let Err(e) = dep_graph.build() {
-            eprintln!("Warning: Failed to build dependency graph: {}", e);
-        }
+        // Removed dependency graph logic
+
 
         Ok(())
+    }
+
+    /// Helper to deduplicate packages based on priority order:
+    /// 1. Flatpak, 2. AppImage (AM), 3. Pacstall, 4. Snap
+    fn deduplicate_packages(&self, packages: impl Iterator<Item = Package>) -> Vec<Package> {
+        let mut by_name: HashMap<String, Vec<Package>> = HashMap::new();
+        
+        for pkg in packages {
+            let name = pkg.identity.name.to_lowercase();
+            by_name.entry(name).or_default().push(pkg);
+        }
+        
+        let mut result = Vec::new();
+        for (_, mut group) in by_name {
+            // Sort by priority order
+            group.sort_by_key(|pkg| match pkg.identity.source {
+                PackageSource::Flatpak => 1,
+                PackageSource::AppImage => 2,
+                PackageSource::Pacstall => 3,
+                PackageSource::Snap => 4,
+                PackageSource::OfferingsCustom => 5,
+            });
+            
+            if !group.is_empty() {
+                let mut best = group.remove(0);
+                // The remaining items in the group are alternatives
+                best.alternatives = group.into_iter().map(|p| p.identity).collect();
+                result.push(best);
+            }
+        }
+        
+        result.sort_by(|a, b| a.identity.name.cmp(&b.identity.name));
+        result
     }
 
     /// Search apps by name or description
@@ -167,26 +189,28 @@ impl BackendService {
         let cache = self.package_cache.read().await;
         let query_lower = query.to_lowercase();
 
-        cache
+        let matches = cache
             .values()
             .filter(|pkg| {
                 pkg.is_app()
                     && (pkg.identity.name.to_lowercase().contains(&query_lower)
                         || pkg.metadata.summary.to_lowercase().contains(&query_lower))
             })
-            .cloned()
-            .collect()
+            .cloned();
+            
+        self.deduplicate_packages(matches)
     }
 
     /// Get apps by category
     pub async fn get_apps_by_category(&self, category: &str) -> Vec<Package> {
         let cache = self.package_cache.read().await;
 
-        cache
+        let matches = cache
             .values()
             .filter(|pkg| pkg.is_app() && pkg.metadata.categories.contains(&category.to_string()))
-            .cloned()
-            .collect()
+            .cloned();
+            
+        self.deduplicate_packages(matches)
     }
 
     /// Get all installed packages
@@ -194,31 +218,6 @@ impl BackendService {
         let cache = self.package_cache.read().await;
 
         cache.values().filter(|pkg| pkg.is_installed).cloned().collect()
-    }
-
-    /// Get installed dependencies
-    pub async fn get_installed_dependencies(&self) -> Vec<Package> {
-        let cache = self.package_cache.read().await;
-
-        let mut deps: Vec<Package> = cache
-            .values()
-            .filter(|pkg| pkg.is_installed && pkg.is_dependency())
-            .cloned()
-            .collect();
-
-        deps.sort_by(|a, b| a.identity.name.cmp(&b.identity.name));
-        deps
-    }
-
-    /// Get all APT packages
-    pub async fn get_all_apt_packages(&self) -> Vec<Package> {
-        let cache = self.package_cache.read().await;
-
-        cache
-            .values()
-            .filter(|pkg| pkg.identity.source == PackageSource::APT)
-            .cloned()
-            .collect()
     }
 
     /// Get packages with available updates
@@ -241,13 +240,61 @@ impl BackendService {
     pub async fn get_package_detail(&self, package_id: &str) -> Option<AppDetailInfo> {
         let cache = self.package_cache.read().await;
         
-        cache.get(package_id).map(|pkg| AppDetailInfo::from(pkg.clone()))
+        if let Some(pkg) = cache.get(package_id) {
+            let mut info = AppDetailInfo::from(pkg.clone());
+            
+            // Find alternatives by matching name
+            let name_lower = pkg.identity.name.to_lowercase();
+            let mut alternatives = Vec::new();
+            
+            for alt_pkg in cache.values() {
+                if alt_pkg.identity.name.to_lowercase() == name_lower && alt_pkg.identity.id != pkg.identity.id {
+                    alternatives.push(alt_pkg.identity.clone());
+                }
+            }
+            
+            alternatives.sort_by_key(|id| match id.source {
+                PackageSource::Flatpak => 1,
+                PackageSource::AppImage => 2,
+                PackageSource::Pacstall => 3,
+                PackageSource::Snap => 4,
+                PackageSource::OfferingsCustom => 5,
+            });
+            
+            info.alternatives = alternatives;
+            Some(info)
+        } else {
+            None
+        }
     }
 
     /// Get a package by ID
     pub async fn get_package(&self, package_id: &str) -> Option<Package> {
         let cache = self.package_cache.read().await;
-        cache.get(package_id).cloned()
+        if let Some(mut pkg) = cache.get(package_id).cloned() {
+            // Find alternatives
+            let name_lower = pkg.identity.name.to_lowercase();
+            let mut alternatives = Vec::new();
+            for alt_pkg in cache.values() {
+                if alt_pkg.identity.name.to_lowercase() == name_lower && alt_pkg.identity.id != pkg.identity.id {
+                    alternatives.push(alt_pkg.identity.clone());
+                }
+            }
+            
+            // Sort alternatives by priority
+            alternatives.sort_by_key(|id| match id.source {
+                PackageSource::Flatpak => 1,
+                PackageSource::AppImage => 2,
+                PackageSource::Pacstall => 3,
+                PackageSource::Snap => 4,
+                PackageSource::OfferingsCustom => 5,
+            });
+            
+            pkg.alternatives = alternatives;
+            Some(pkg)
+        } else {
+            None
+        }
     }
 
     /// Get packages by source
@@ -280,10 +327,40 @@ impl BackendService {
                 match &operation {
                     PackageOperation::Install(pkg_id) => {
                         let adapter = self.find_adapter_for_package(pkg_id).await?;
-                        let result = adapter.install(pkg_id).await?;
+                        let original_source = adapter.source().label().to_string();
+                        let mut result = adapter.install(pkg_id).await?;
+                        let mut used_fallback = false;
+                        let mut fallback_source = String::new();
+                        
+                        if !result.success {
+                            // Fallback logic: try alternatives
+                            if let Some(pkg) = &package {
+                                for alt in &pkg.alternatives {
+                                    if let Ok(alt_adapter) = self.find_adapter_for_package(&alt.id).await {
+                                        if let Ok(alt_result) = alt_adapter.install(&alt.id).await {
+                                            if alt_result.success {
+                                                result = alt_result;
+                                                used_fallback = true;
+                                                fallback_source = alt.source.label().to_string();
+                                                result.message = format!("Primary installation failed, but fallback to {} succeeded: {}", alt.id, result.message);
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         
                         if result.success {
-                            self.notifications.notify_install(pkg_id, true);
+                            if used_fallback {
+                                self.notifications.notify(NotificationType::FallbackSuccess {
+                                    package_name: pkg_id.clone(),
+                                    source: fallback_source,
+                                    original_source,
+                                }).map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { e.to_string().into() })?;
+                            } else {
+                                self.notifications.notify_install(pkg_id, true);
+                            }
                         } else {
                             self.notifications.notify_error("install", pkg_id, &result.message);
                         }
@@ -367,23 +444,19 @@ impl BackendService {
         }
 
         // Parse package ID to determine source
-        let source = if pkg_id.starts_with("apt:") {
-            PackageSource::APT
-        } else if pkg_id.starts_with("flatpak:") {
+        let source = if pkg_id.starts_with("flatpak:") {
             PackageSource::Flatpak
+        } else if pkg_id.starts_with("appimage:") || pkg_id.starts_with("am:") {
+            PackageSource::AppImage
+        } else if pkg_id.starts_with("pacstall:") {
+            PackageSource::Pacstall
         } else if pkg_id.starts_with("snap:") {
             PackageSource::Snap
-        } else if pkg_id.starts_with("appimage:") {
-            PackageSource::AppImage
-        } else if pkg_id.starts_with("soar:") {
-            PackageSource::Soar
-        } else if pkg_id.starts_with("github:") {
-            PackageSource::GitHubRelease
         } else if pkg_id.starts_with("custom:") {
             PackageSource::OfferingsCustom
         } else {
-            // Default to APT for unqualified package names
-            PackageSource::APT
+            // Default to Flathub if not specified
+            PackageSource::Flatpak
         };
 
         if let Some(&idx) = self.adapter_map.get(&source) {
@@ -393,35 +466,7 @@ impl BackendService {
         }
     }
 
-    /// Get dependency graph for a package
-    pub async fn get_dependency_tree(&self, package_id: &str) -> Vec<String> {
-        let dep_graph = self.dep_graph.read().await;
-        dep_graph.get_full_dependency_tree(package_id).flatten()
-    }
 
-    /// Get reverse dependencies
-    pub async fn get_reverse_dependencies(&self, package_id: &str) -> Vec<String> {
-        let dep_graph = self.dep_graph.read().await;
-        dep_graph.get_reverse_dependencies(package_id)
-    }
-
-    /// Trace dependency path
-    pub async fn trace_dependency(&self, app_id: &str, dep_id: &str) -> Option<String> {
-        let dep_graph = self.dep_graph.read().await;
-        dep_graph.trace_dependency(app_id, dep_id).map(|t| t.display())
-    }
-
-    /// Find orphaned dependencies
-    pub async fn find_orphans(&self) -> Vec<Package> {
-        let dep_graph = self.dep_graph.read().await;
-        let orphan_ids = dep_graph.find_orphans();
-        
-        let cache = self.package_cache.read().await;
-        orphan_ids
-            .into_iter()
-            .filter_map(|id| cache.get(&id).cloned())
-            .collect()
-    }
 
     /// Check for updates across all sources
     pub async fn check_all_updates(&self) -> Vec<Package> {
@@ -456,6 +501,42 @@ impl BackendService {
         }
         
         sources
+    }
+
+    /// Start a background task that periodically refreshes the package cache
+    /// This checks for new apps, removed apps, and version updates
+    pub fn start_background_refresh(
+        self: &Arc<Self>,
+        interval_secs: u64,
+    ) -> Arc<tokio::task::JoinHandle<()>> {
+        let backend = self.clone();
+        
+        let handle = tokio::spawn(async move {
+            let duration = tokio::time::Duration::from_secs(interval_secs);
+            
+            loop {
+                tokio::time::sleep(duration).await;
+                
+                // Perform a full cache refresh
+                if let Err(e) = backend.refresh_cache().await {
+                    eprintln!("Background refresh failed: {}", e);
+                } else {
+                    // Check for updates after refresh
+                    let updates = backend.check_all_updates().await;
+                    if !updates.is_empty() {
+                        let _ = backend.notifications.notify_updates_available(updates.len());
+                    }
+                }
+            }
+        });
+        
+        Arc::new(handle)
+    }
+
+    /// Get current package count for change detection
+    pub async fn get_package_count(&self) -> usize {
+        let cache = self.package_cache.read().await;
+        cache.len()
     }
 }
 

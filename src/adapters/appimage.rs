@@ -1,10 +1,6 @@
 // src/adapters/appimage.rs - AppImage Management Adapter
-use super::PackageAdapter;
-// use super::command_exists;
-use crate::model::{
-    DependencyInfo, InstallReason, OperationResult, Package, PackageIdentity, PackageMetadata,
-    PackageSource, PackageVersion,
-};
+use super::{command_exists, run_command, PackageAdapter};
+use crate::model::{OperationResult, Package, PackageIdentity, PackageMetadata, PackageSource, PackageVersion};
 use async_trait::async_trait;
 use std::error::Error;
 use std::path::PathBuf;
@@ -122,9 +118,68 @@ impl PackageAdapter for AppImageAdapter {
     }
 
     async fn list_available(&self) -> Result<Vec<Package>, Box<dyn Error + Send + Sync>> {
-        // AppImages don't have a central repository
-        // This could be extended to integrate with AppImageHub
-        Ok(vec![])
+        let mut packages = Vec::new();
+
+        if command_exists("am").await {
+            if let Ok(output) = run_command("am", &["-f"]).await {
+                for line in output.lines() {
+                    let line = line.trim();
+                    if line.is_empty() || line.starts_with('#') {
+                        continue;
+                    }
+
+                    let parts: Vec<&str> = line.split('\t').collect();
+                    if parts.is_empty() {
+                        continue;
+                    }
+
+                    let name = parts[0].trim().to_string();
+                    if name.is_empty() {
+                        continue;
+                    }
+
+                    let version = if parts.len() > 1 {
+                        Some(parts[1].trim().to_string())
+                    } else {
+                        None
+                    };
+
+                    let description = if parts.len() > 2 {
+                        parts[2].trim().to_string()
+                    } else {
+                        format!("AppImage package: {}", name)
+                    };
+
+                    let pkg = Package {
+                        identity: PackageIdentity {
+                            id: format!("appimage:{}", name),
+                            name: name.clone(),
+                            source: PackageSource::AppImage,
+                        },
+                        metadata: PackageMetadata {
+                            summary: description.clone(),
+                            description,
+                            icon_url: None,
+                            screenshots: vec![],
+                            documentation_url: None,
+                            homepage_url: None,
+                            categories: vec!["Application".to_string()],
+                            rating: None,
+                        },
+                        version: PackageVersion {
+                            installed: None,
+                            latest: version,
+                        },
+                        is_installed: false,
+                        alternatives: vec![],
+                    };
+
+                    packages.push(pkg);
+                }
+            }
+        }
+
+        Ok(packages)
     }
 
     async fn list_installed(&self) -> Result<Vec<Package>, Box<dyn Error + Send + Sync>> {
@@ -189,12 +244,8 @@ impl PackageAdapter for AppImageAdapter {
                             installed: version.clone(),
                             latest: version,
                         },
-                        dependency_info: DependencyInfo {
-                            dependencies: vec![],
-                            reverse_dependencies: vec![],
-                            install_reason: InstallReason::Explicit,
-                        },
                         is_installed: true,
+                        alternatives: vec![],
                     };
 
                     packages.push(pkg);
@@ -239,8 +290,8 @@ impl PackageAdapter for AppImageAdapter {
                 installed: version.clone(),
                 latest: version,
             },
-            dependency_info: DependencyInfo::default(),
             is_installed: true,
+            alternatives: vec![],
         }))
     }
 

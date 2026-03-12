@@ -1,9 +1,6 @@
 // src/adapters/flatpak.rs - Flatpak Package Manager Adapter
 use super::{command_exists, run_command, PackageAdapter};
-use crate::model::{
-    DependencyInfo, InstallReason, OperationResult, Package, PackageIdentity, PackageMetadata,
-    PackageSource, PackageVersion,
-};
+use crate::model::{OperationResult, Package, PackageIdentity, PackageMetadata, PackageSource, PackageVersion};
 use async_trait::async_trait;
 use std::error::Error;
 
@@ -58,14 +55,10 @@ impl FlatpakAdapter {
                     },
                     version: PackageVersion {
                         installed: if is_installed { Some(version.to_string()) } else { None },
-                        latest: Some(version.to_string()),
-                    },
-                    dependency_info: DependencyInfo {
-                        dependencies: vec![],
-                        reverse_dependencies: vec![],
-                        install_reason: InstallReason::Explicit,
+                         latest: Some(version.to_string()),
                     },
                     is_installed,
+                    alternatives: vec![],
                 };
 
                 packages.push(pkg);
@@ -119,8 +112,8 @@ impl FlatpakAdapter {
                 installed: Some(version.clone()),
                 latest: Some(version),
             },
-            dependency_info: DependencyInfo::default(),
             is_installed: true,
+            alternatives: vec![],
         })
     }
 
@@ -160,8 +153,8 @@ impl FlatpakAdapter {
                         installed: None,
                         latest: None,
                     },
-                    dependency_info: DependencyInfo::default(),
                     is_installed: false,
+                    alternatives: vec![],
                 };
 
                 packages.push(pkg);
@@ -189,19 +182,19 @@ impl PackageAdapter for FlatpakAdapter {
     }
 
     async fn list_available(&self) -> Result<Vec<Package>, Box<dyn Error + Send + Sync>> {
-        let output = run_command("flatpak", &["remote-ls", "--app", &self.remote]).await?;
+        let output = run_command("flatpak", &["remote-ls", "--app", &self.remote][..]).await?;
         Ok(self.parse_remote_ls_output(&output))
     }
 
     async fn list_installed(&self) -> Result<Vec<Package>, Box<dyn Error + Send + Sync>> {
-        let output = run_command("flatpak", &["list", "--app", "--columns=name,application,version"]).await?;
+        let output = run_command("flatpak", &["list", "--app", "--columns=name,application,version"][..]).await?;
         Ok(self.parse_list_output(&output, true))
     }
 
     async fn get_package(&self, id: &str) -> Result<Option<Package>, Box<dyn Error + Send + Sync>> {
         let app_id = id.strip_prefix("flatpak:").unwrap_or(id);
         
-        let output = run_command("flatpak", &["info", app_id]).await;
+        let output = run_command("flatpak", &["info", app_id][..]).await;
         
         match output {
             Ok(output) => Ok(self.parse_info_output(&output)),
@@ -210,7 +203,7 @@ impl PackageAdapter for FlatpakAdapter {
     }
 
     async fn check_updates(&self) -> Result<Vec<Package>, Box<dyn Error + Send + Sync>> {
-        let output = run_command("flatpak", &["remote-ls", "--app", "--updates", &self.remote]).await?;
+        let output = run_command("flatpak", &["remote-ls", "--app", "--updates", &self.remote][..]).await?;
         
         let mut packages = Vec::new();
         for line in output.lines() {
@@ -226,8 +219,8 @@ impl PackageAdapter for FlatpakAdapter {
                         },
                         metadata: PackageMetadata::default(),
                         version: PackageVersion::default(),
-                        dependency_info: DependencyInfo::default(),
                         is_installed: true,
+                        alternatives: vec![],
                     });
                 }
             }
@@ -239,7 +232,7 @@ impl PackageAdapter for FlatpakAdapter {
     async fn install(&self, package_id: &str) -> Result<OperationResult, Box<dyn Error + Send + Sync>> {
         let app_id = package_id.strip_prefix("flatpak:").unwrap_or(package_id);
         
-        match run_command("flatpak", &["install", "-y", &self.remote, app_id]).await {
+        match run_command("flatpak", &["install", "-y", &self.remote, app_id][..]).await {
             Ok(_) => Ok(OperationResult {
                 success: true,
                 message: format!("Successfully installed {}", app_id),
@@ -256,7 +249,7 @@ impl PackageAdapter for FlatpakAdapter {
     async fn update(&self, package_id: &str) -> Result<OperationResult, Box<dyn Error + Send + Sync>> {
         let app_id = package_id.strip_prefix("flatpak:").unwrap_or(package_id);
         
-        match run_command("flatpak", &["update", "-y", app_id]).await {
+        match run_command("flatpak", &["update", "-y", app_id][..]).await {
             Ok(_) => Ok(OperationResult {
                 success: true,
                 message: format!("Successfully updated {}", app_id),
@@ -273,7 +266,7 @@ impl PackageAdapter for FlatpakAdapter {
     async fn uninstall(&self, package_id: &str) -> Result<OperationResult, Box<dyn Error + Send + Sync>> {
         let app_id = package_id.strip_prefix("flatpak:").unwrap_or(package_id);
         
-        match run_command("flatpak", &["uninstall", "-y", app_id]).await {
+        match run_command("flatpak", &["uninstall", "-y", app_id][..]).await {
             Ok(_) => Ok(OperationResult {
                 success: true,
                 message: format!("Successfully removed {}", app_id),
@@ -291,7 +284,7 @@ impl PackageAdapter for FlatpakAdapter {
         let app_id = package_id.strip_prefix("flatpak:").unwrap_or(package_id);
         
         // Flatpak shows runtime dependencies in info
-        let output = run_command("flatpak", &["info", "--show-runtime", app_id]).await?;
+        let output = run_command("flatpak", &["info", "--show-runtime", app_id][..]).await?;
         
         let mut deps = Vec::new();
         for line in output.lines() {

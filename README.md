@@ -2,35 +2,24 @@
 
 **Offerings** is a modern, unified package manager GUI for Linux, designed to simplify application management across multiple package formats. Built with **Rust** and **Slint**, it provides a high-performance, aesthetically pleasing, and responsive interface for discovering, installing, and managing software.
 
-## 🚀 Features
+## Features
 
 *   **Unified Package Management**: Seamlessly manage packages from multiple sources in one interface:
-    *   📦 **APT** (Debian/Ubuntu native packages)
-    *   🥡 **Flatpak**
-    *   🍱 **Snap**
-    *   💿 **AppImage**
-    *   🦅 **Soar**
-    *   🐙 **GitHub Releases**
-    *   🛠️ **Custom Offerings Packages**
-*   **Modern User Interface**: A sleek, "Dark Black" themed UI built with Slint.
-    *   Sidebar navigation with categorized views (Audio, Video, Development, etc.).
-    *   Responsive and fluid animations.
-    *   Optimized for readability with alternating row colors.
-*   **Advanced Dependency Management**:
-    *   Dedicated **Dependencies View** to explore installed dependencies.
-    *   **Dependency Graph**: Visualise and trace dependency trees for any installed package.
-    *   Orphan detection and circular dependency analysis.
-*   **Safe Transactions**: 
-    *   Transactional package operations with full rollback support.
-    *   Queue management for batch operations.
-*   **Accessibility First**:
-    *   Adjustable font sizes and contrast settings.
-    *   System font integration.
-*   **Performance**: 
-    *   Fast SQLite-based caching for instant search results.
-    *   Asynchronous backend powered by Tokio.
+    *   **Flatpak** - Sandboxed applications from Flathub
+    *   **AppImage** - Portable applications via AM (AppImage Manager)
+    *   **Pacstall** - Ubuntu/Debian packages from Pacstall
+    *   **Snap** - Canonical's Snap packages
+    *   **Custom** - Developer-curated packages
+*   **Smart Source Selection**: When an app is available from multiple sources, easily switch between them via dropdown menu
+*   **Automatic Fallback**: If installation fails from one source, automatically tries alternative sources and notifies you of success
+*   **Auto-Updating App List**: Background refresh automatically detects new apps, removed apps, and version updates from all sources
+*   **Modern User Interface**: A sleek, "Dark Black" themed UI built with Slint
+    *   Sidebar navigation with categorized views
+    *   Responsive and fluid animations
+    *   Optimized for readability with alternating row colors
+*   **Developer Curated**: Featured "Lilith" category for developer-curated applications
 
-## 🛠️ Installation
+## Installation
 
 ### Prerequisites
 
@@ -60,48 +49,41 @@ Ensure you have the following installed on your system:
     ./target/release/offerings
     ```
 
-## 📖 Usage
+## Usage
 
 ### Navigation
-The sidebar allows you to filter applications by category. The **Featured** section highlights popular apps, while various categories organize your software library effectively.
+The sidebar allows you to filter applications by category. The **Featured** section highlights popular apps, while the **Lilith** category showcases developer-curated applications.
 
 ### Installing a Package
-1.  Use the **Search Bar** at the top to find a package by name or description.
-2.  Click "Install" on the package card.
-3.  Monitor progress via system notifications.
+1.  Use the **Search Bar** at the top to find a package by name or description
+2.  Click on a package to view its details
+3.  If the package is available from multiple sources, use the **Source** dropdown to select your preferred source
+4.  Click "Install" to install the package
 
-### Managing Dependencies
-Navigate to the **Dependencies** tab to view all installed artifacts. Click on any item to view:
-*   Installation date.
-*   Full dependency tree.
-*   Reverse dependencies (what apps rely on this package).
+### Automatic Fallback
+If installation fails from the primary source, Offerings will automatically attempt to install from alternative sources. You'll receive a notification when a fallback installation succeeds.
 
-### Settings
-Access the **App Settings** from the sidebar to customize:
-*   Font Family (System defaults).
-*   Font Size (10px - 24px).
-*   Colors & Contrast.
+### Updates
+Offerings automatically checks for updates in the background. You can also manually check for updates. The app list refreshes every 30 minutes to detect new apps, removed apps, and version changes.
 
-## 🏗️ Architecture
+## Architecture
 
 Offerings is built using a clean, modular architecture:
 
-*   **Frontend**: [Slint UI](https://slint.dev) (`ui/main.slint`) - A lightweight, native UI toolkit.
-*   **Backend**: Rust (`src/backend.rs`) - Handles business logic, state, and orchestration.
-*   **Adapters**: (`src/adapters/`) - Modular traits for connecting to different package managers (APT, Flatpak, etc.).
-*   **Database**: SQLite (`src/db.rs`) - Caches package metadata and logs transactions.
-*   **IPC**: Unix domain sockets for external control and single-instance locking.
+*   **Frontend**: [Slint UI](https://slint.dev) (`ui/main.slint`) - A lightweight, native UI toolkit
+*   **Backend**: Rust (`src/backend.rs`) - Handles business logic, state, and orchestration
+*   **Adapters**: (`src/adapters/`) - Modular traits for connecting to different package managers
+*   **Database**: SQLite (`src/db.rs`) - Caches package metadata
+*   **IPC**: Unix domain sockets for external control and single-instance locking
 
-## 🤝 Contributing
+### Priority System
+When duplicates exist across sources, packages are prioritized in this order:
+1.  Flatpak (highest)
+2.  AppImage
+3.  Pacstall
+4.  Snap
+5.  Custom (lowest)
 
-Contributions are welcome!
-
-1.  Fork the repository.
-2.  Create a feature branch: `git checkout -b feature/amazing-feature`.
-3.  Commit your changes: `git commit -m 'Add some amazing feature'`.
-4.  Push to the branch: `git push origin feature/amazing-feature`.
-5.  Open a Pull Request.
-
-## 📄 License
+## License
 
 This project is open-source and available under the [MIT License](LICENSE).

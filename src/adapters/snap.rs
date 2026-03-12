@@ -1,9 +1,6 @@
 // src/adapters/snap.rs - Snap Package Manager Adapter
 use super::{command_exists, run_command, run_sudo_command, PackageAdapter};
-use crate::model::{
-    DependencyInfo, InstallReason, OperationResult, Package, PackageIdentity, PackageMetadata,
-    PackageSource, PackageVersion,
-};
+use crate::model::{OperationResult, Package, PackageIdentity, PackageMetadata, PackageSource, PackageVersion};
 use async_trait::async_trait;
 use std::error::Error;
 
@@ -32,7 +29,7 @@ impl SnapAdapter {
                 let name = parts[0];
                 let version = parts[1];
                 let _rev = parts[2];
-                let tracking = if parts.len() > 3 { parts[3] } else { "stable" };
+                let _tracking = if parts.len() > 3 { parts[3] } else { "stable" };
 
                 let pkg = Package {
                     identity: PackageIdentity {
@@ -54,12 +51,8 @@ impl SnapAdapter {
                         installed: Some(version.to_string()),
                         latest: Some(version.to_string()),
                     },
-                    dependency_info: DependencyInfo {
-                        dependencies: vec![],
-                        reverse_dependencies: vec![],
-                        install_reason: InstallReason::Explicit,
-                    },
                     is_installed: true,
+                    alternatives: vec![],
                 };
 
                 packages.push(pkg);
@@ -109,8 +102,8 @@ impl SnapAdapter {
                         installed: None,
                         latest: Some(version.to_string()),
                     },
-                    dependency_info: DependencyInfo::default(),
                     is_installed: false,
+                    alternatives: vec![],
                 };
 
                 packages.push(pkg);
@@ -126,13 +119,13 @@ impl SnapAdapter {
         let mut summary = String::new();
         let mut description = String::new();
         let mut version = String::new();
-        let mut publisher = String::new();
+        let mut _publisher = String::new();
         let mut is_installed = false;
 
         let mut in_description = false;
 
         for line in output.lines() {
-            let line_lower = line.to_lowercase();
+            let _line_lower = line.to_lowercase();
             
             if line.starts_with("name:") {
                 name = line.trim_start_matches("name:").trim().to_string();
@@ -141,7 +134,7 @@ impl SnapAdapter {
                 summary = line.trim_start_matches("summary:").trim().to_string();
                 in_description = false;
             } else if line.starts_with("publisher:") {
-                publisher = line.trim_start_matches("publisher:").trim().to_string();
+                _publisher = line.trim_start_matches("publisher:").trim().to_string();
                 in_description = false;
             } else if line.starts_with("description:") {
                 in_description = true;
@@ -184,8 +177,8 @@ impl SnapAdapter {
                 installed: if is_installed { Some(version.clone()) } else { None },
                 latest: Some(version),
             },
-            dependency_info: DependencyInfo::default(),
             is_installed,
+            alternatives: vec![],
         })
     }
 }
@@ -209,19 +202,19 @@ impl PackageAdapter for SnapAdapter {
     async fn list_available(&self) -> Result<Vec<Package>, Box<dyn Error + Send + Sync>> {
         // Snap doesn't have a way to list all available packages efficiently
         // Return featured/popular snaps instead
-        let output = run_command("snap", &["find", "--section=featured"]).await?;
+        let output = run_command("snap", &["find", "--section=featured"][..]).await?;
         Ok(self.parse_find_output(&output))
     }
 
     async fn list_installed(&self) -> Result<Vec<Package>, Box<dyn Error + Send + Sync>> {
-        let output = run_command("snap", &["list"]).await?;
+        let output = run_command("snap", &["list"][..]).await?;
         Ok(self.parse_list_output(&output))
     }
 
     async fn get_package(&self, id: &str) -> Result<Option<Package>, Box<dyn Error + Send + Sync>> {
         let snap_name = id.strip_prefix("snap:").unwrap_or(id);
         
-        let output = run_command("snap", &["info", snap_name]).await;
+        let output = run_command("snap", &["info", snap_name][..]).await;
         
         match output {
             Ok(output) => Ok(self.parse_info_output(&output)),
@@ -230,7 +223,7 @@ impl PackageAdapter for SnapAdapter {
     }
 
     async fn check_updates(&self) -> Result<Vec<Package>, Box<dyn Error + Send + Sync>> {
-        let output = run_command("snap", &["refresh", "--list"]).await;
+        let output = run_command("snap", &["refresh", "--list"][..]).await;
         
         match output {
             Ok(output) => {
@@ -247,8 +240,8 @@ impl PackageAdapter for SnapAdapter {
                             },
                             metadata: PackageMetadata::default(),
                             version: PackageVersion::default(),
-                            dependency_info: DependencyInfo::default(),
                             is_installed: true,
+                            alternatives: vec![],
                         });
                     }
                 }
@@ -261,7 +254,7 @@ impl PackageAdapter for SnapAdapter {
     async fn install(&self, package_id: &str) -> Result<OperationResult, Box<dyn Error + Send + Sync>> {
         let snap_name = package_id.strip_prefix("snap:").unwrap_or(package_id);
         
-        match run_sudo_command("snap", &["install", snap_name]).await {
+        match run_sudo_command("snap", &["install", snap_name][..]).await {
             Ok(_) => Ok(OperationResult {
                 success: true,
                 message: format!("Successfully installed {}", snap_name),
@@ -278,7 +271,7 @@ impl PackageAdapter for SnapAdapter {
     async fn update(&self, package_id: &str) -> Result<OperationResult, Box<dyn Error + Send + Sync>> {
         let snap_name = package_id.strip_prefix("snap:").unwrap_or(package_id);
         
-        match run_sudo_command("snap", &["refresh", snap_name]).await {
+        match run_sudo_command("snap", &["refresh", snap_name][..]).await {
             Ok(_) => Ok(OperationResult {
                 success: true,
                 message: format!("Successfully updated {}", snap_name),
@@ -295,7 +288,7 @@ impl PackageAdapter for SnapAdapter {
     async fn uninstall(&self, package_id: &str) -> Result<OperationResult, Box<dyn Error + Send + Sync>> {
         let snap_name = package_id.strip_prefix("snap:").unwrap_or(package_id);
         
-        match run_sudo_command("snap", &["remove", snap_name]).await {
+        match run_sudo_command("snap", &["remove", snap_name][..]).await {
             Ok(_) => Ok(OperationResult {
                 success: true,
                 message: format!("Successfully removed {}", snap_name),

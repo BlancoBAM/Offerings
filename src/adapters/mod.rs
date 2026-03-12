@@ -1,18 +1,14 @@
 // src/adapters/mod.rs - Module exports for all package adapters
-mod apt;
 mod flatpak;
 mod snap;
 mod appimage;
-mod soar;
-mod github;
+mod pacstall;
 mod custom;
 
-pub use apt::AptAdapter;
 pub use flatpak::FlatpakAdapter;
 pub use snap::SnapAdapter;
 pub use appimage::AppImageAdapter;
-pub use soar::SoarAdapter;
-pub use github::GitHubAdapter;
+pub use pacstall::PacstallAdapter;
 pub use custom::CustomAdapter;
 
 use crate::model::{Package, PackageSource, OperationResult};
@@ -35,6 +31,7 @@ pub trait PackageAdapter: Send + Sync {
     async fn list_installed(&self) -> Result<Vec<Package>, Box<dyn Error + Send + Sync>>;
     
     /// Get detailed info for a specific package
+    #[allow(dead_code)]
     async fn get_package(&self, id: &str) -> Result<Option<Package>, Box<dyn Error + Send + Sync>>;
     
     /// Check for available updates
@@ -50,6 +47,7 @@ pub trait PackageAdapter: Send + Sync {
     async fn uninstall(&self, package_id: &str) -> Result<OperationResult, Box<dyn Error + Send + Sync>>;
     
     /// Get dependencies of a package
+    #[allow(dead_code)]
     async fn get_dependencies(&self, package_id: &str) -> Result<Vec<String>, Box<dyn Error + Send + Sync>>;
 
     /// Refresh the package cache/index

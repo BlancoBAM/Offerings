@@ -2,7 +2,6 @@
 mod adapters;
 mod backend;
 mod db;
-mod depgraph;
 mod ipc;
 mod model;
 mod notifications;
@@ -47,12 +46,10 @@ fn get_system_fonts() -> Vec<String> {
 /// Source label -> representative URL mapping
 fn source_url(label: &str) -> &'static str {
     match label {
-        "APT" => "apt://local (Debian/Ubuntu repositories)",
         "Flatpak" => "https://flathub.org",
         "Snap" => "https://snapcraft.io",
         "AppImage" => "https://appimage.github.io",
-        "Soar" => "https://github.com/pkgforge/soar",
-        "GitHub" => "https://api.github.com/repos",
+        "Pacstall" => "https://pacstall.dev",
         "Offerings" => "file:///etc/offerings/custom",
         _ => "unknown://",
     }
@@ -63,84 +60,99 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize backend with featured apps for each category
     let home_content = HomePageContent {
         featured_apps: vec![
-            "apt:firefox".to_string(),
-            "apt:vlc".to_string(),
-            "apt:gimp".to_string(),
-            "apt:blender".to_string(),
-            "apt:audacity".to_string(),
+            "flatpak:org.mozilla.firefox".to_string(),
+            "flatpak:org.videolan.VLC".to_string(),
+            "flatpak:org.gimp.GIMP".to_string(),
+            "flatpak:org.blender.Blender".to_string(),
+            "flatpak:org.audacityteam.Audacity".to_string(),
         ],
         category_showcases: {
             let mut map = HashMap::new();
-            map.insert("Lilith".to_string(), vec![]); // Custom Lilith packages
+            map.insert(
+                "Lilith".to_string(),
+                vec![
+                    "flatpak:org.mozilla.firefox".to_string(),
+                    "snap:code".to_string(),
+                    "appimage:Discord".to_string(),
+                ],
+            ); // Developer curated
             map.insert(
                 "Audio".to_string(),
                 vec![
-                    "apt:audacity".to_string(),
-                    "apt:ardour".to_string(),
-                    "apt:lmms".to_string(),
+                    "flatpak:org.audacityteam.Audacity".to_string(),
+                    "flatpak:org.ardour.Ardour".to_string(),
+                    "flatpak:org.lmms.LMMS".to_string(),
                 ],
             );
             map.insert(
                 "Video".to_string(),
                 vec![
-                    "apt:vlc".to_string(),
-                    "apt:kdenlive".to_string(),
-                    "apt:obs-studio".to_string(),
+                    "flatpak:org.videolan.VLC".to_string(),
+                    "flatpak:org.kde.kdenlive".to_string(),
+                    "flatpak:com.obsproject.Studio".to_string(),
                 ],
             );
             map.insert(
                 "Development".to_string(),
                 vec![
-                    "apt:git".to_string(),
-                    "apt:vim".to_string(),
-                    "apt:code".to_string(),
+                    "snap:code".to_string(),
+                    "flatpak:org.vim.Vim".to_string(),
+                    "pacstall:neovim".to_string(),
                 ],
             );
             map.insert(
                 "Education".to_string(),
-                vec!["apt:gcompris".to_string(), "apt:stellarium".to_string()],
+                vec![
+                    "flatpak:org.kde.gcompris".to_string(),
+                    "flatpak:org.stellarium.Stellarium".to_string(),
+                ],
             );
             map.insert(
                 "Game".to_string(),
-                vec!["apt:supertuxkart".to_string(), "apt:0ad".to_string()],
+                vec![
+                    "flatpak:org.supertuxkart.SuperTuxKart".to_string(),
+                    "flatpak:com.play0ad.zeroad".to_string(),
+                ],
             );
             map.insert(
                 "Graphics".to_string(),
                 vec![
-                    "apt:gimp".to_string(),
-                    "apt:inkscape".to_string(),
-                    "apt:blender".to_string(),
+                    "flatpak:org.gimp.GIMP".to_string(),
+                    "flatpak:org.inkscape.Inkscape".to_string(),
+                    "flatpak:org.blender.Blender".to_string(),
                 ],
             );
             map.insert(
                 "Network".to_string(),
                 vec![
-                    "apt:firefox".to_string(),
-                    "apt:chromium".to_string(),
-                    "apt:thunderbird".to_string(),
+                    "flatpak:org.mozilla.firefox".to_string(),
+                    "flatpak:org.chromium.Chromium".to_string(),
                 ],
             );
             map.insert(
                 "Office".to_string(),
-                vec!["apt:libreoffice".to_string(), "apt:evince".to_string()],
+                vec![
+                    "flatpak:org.libreoffice.LibreOffice".to_string(),
+                    "flatpak:org.gnome.Evince".to_string(),
+                ],
             );
             map.insert(
                 "Science".to_string(),
-                vec!["apt:octave".to_string(), "apt:gnuplot".to_string()],
+                vec![
+                    "flatpak:org.octave.Octave".to_string(),
+                ],
             );
-            map.insert("Settings".to_string(), vec!["apt:gnome-tweaks".to_string()]);
+            map.insert("Settings".to_string(), vec![]);
             map.insert(
                 "System".to_string(),
                 vec![
-                    "apt:htop".to_string(),
-                    "apt:gnome-system-monitor".to_string(),
+                    "flatpak:org.gnome.SystemMonitor".to_string(),
                 ],
             );
             map.insert(
                 "Utilities".to_string(),
                 vec![
-                    "apt:gnome-calculator".to_string(),
-                    "apt:file-roller".to_string(),
+                    "flatpak:org.gnome.Calculator".to_string(),
                 ],
             );
             map
@@ -154,6 +166,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             return Err(e.into());
         }
     };
+
+    // Start background refresh task (checks every 30 minutes for new apps/updates)
+    let _background_refresh = backend.start_background_refresh(1800);
+
+    // Do initial cache refresh to load all packages
+    if let Err(e) = backend.refresh_cache().await {
+        eprintln!("Warning: Initial cache refresh failed: {}", e);
+    }
 
     // Start IPC server
     let mut ipc_server = IpcServer::new();
@@ -337,42 +357,59 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Package click handler
     ui.on_package_clicked({
-        let _ui_weak = ui.as_weak();
-        let _backend = backend_clone.clone();
-        move |_pkg_id| {
-            // Package detail view - will be implemented with detail popup
-        }
-    });
-
-    // View dependencies handler
-    ui.on_view_dependencies({
         let ui_weak = ui.as_weak();
         let backend = backend_clone.clone();
         move |pkg_id| {
             let backend = backend.clone();
-            let pkg_id = pkg_id.to_string();
             let ui_weak = ui_weak.clone();
+            let pkg_id = pkg_id.to_string();
 
             tokio::spawn(async move {
-                let deps = backend.get_dependency_tree(&pkg_id).await;
-                let dep_items: Vec<DependencyItem> = deps
-                    .into_iter()
-                    .map(|d| DependencyItem {
-                        id: d.clone().into(),
-                        name: d.split(':').last().unwrap_or(&d).to_string().into(),
-                        version: "".into(),
-                        reason: "dependency".into(),
-                    })
-                    .collect();
+                if let Some(pkg) = backend.get_package(&pkg_id).await {
+                    let _ = slint::invoke_from_event_loop({
+                        let ui_weak = ui_weak.clone();
+                        move || {
+                            if let Some(ui) = ui_weak.upgrade() {
+                                // Since convert_to_slint_package is async, we can't call it here easily.
+                                // But wait, it doesn't HAVE to be async if we don't fetch extra data.
+                                // Actually, it WAS async because I added a loop over alternatives.
+                                // Let's simplify it.
+                                
+                                let has_update = pkg.version.has_update();
+                                let alternatives: Vec<AlternativeSource> = pkg.alternatives
+                                    .iter()
+                                    .map(|alt| AlternativeSource {
+                                        id: alt.id.clone().into(),
+                                        source: alt.source.label().into(),
+                                    })
+                                    .collect();
 
-                let _ = slint::invoke_from_event_loop(move || {
-                    if let Some(ui) = ui_weak.upgrade() {
-                        ui.set_selected_deps(slint::ModelRc::new(slint::VecModel::from(dep_items)));
-                    }
-                });
+                                let slint_pkg = PackageInfo {
+                                    id: pkg.identity.id.into(),
+                                    name: pkg.identity.name.into(),
+                                    summary: pkg.metadata.summary.into(),
+                                    source: pkg.identity.source.label().into(),
+                                    installed_version: pkg.version.installed.unwrap_or_default().into(),
+                                    latest_version: pkg.version.latest.unwrap_or_default().into(),
+                                    has_update,
+                                    is_installed: pkg.is_installed,
+                                    icon_url: pkg.metadata.icon_url.unwrap_or_default().into(),
+                                    rating: pkg.metadata.rating.unwrap_or(0.0),
+                                    description: pkg.metadata.description.clone().into(),
+                                    install_date: 0,
+                                    alternatives: slint::ModelRc::new(slint::VecModel::from(alternatives)),
+                                };
+                                
+                                ui.set_selected_package(slint_pkg);
+                                ui.set_show_package_detail(true);
+                            }
+                        }
+                    });
+                }
             });
         }
     });
+
 
     // Category selection handler
     ui.on_category_selected({
@@ -644,12 +681,22 @@ async fn handle_ipc_request(backend: &BackendService, request: IpcRequest) -> Ip
     }
 }
 
-/// Convert internal Package struct to Slint PackageInfo
+/// Convert internal Package struct to Slint PackageInfo (Bulk)
 fn convert_to_slint_packages(packages: Vec<model::Package>) -> slint::ModelRc<PackageInfo> {
     let slint_packages: Vec<PackageInfo> = packages
         .into_iter()
         .map(|pkg| {
             let has_update = pkg.version.has_update();
+            
+            // For simple lists, we don't need full alternatives detail yet
+            let alternatives: Vec<AlternativeSource> = pkg.alternatives
+                .iter()
+                .map(|alt| AlternativeSource {
+                    id: alt.id.clone().into(),
+                    source: alt.source.label().into(),
+                })
+                .collect();
+
             PackageInfo {
                 id: pkg.identity.id.into(),
                 name: pkg.identity.name.into(),
@@ -661,7 +708,9 @@ fn convert_to_slint_packages(packages: Vec<model::Package>) -> slint::ModelRc<Pa
                 is_installed: pkg.is_installed,
                 icon_url: pkg.metadata.icon_url.unwrap_or_default().into(),
                 rating: pkg.metadata.rating.unwrap_or(0.0),
-                install_date: 0, // TODO: Get actual install date from database
+                description: pkg.metadata.description.clone().into(),
+                install_date: 0,
+                alternatives: slint::ModelRc::new(slint::VecModel::from(alternatives)),
             }
         })
         .collect();

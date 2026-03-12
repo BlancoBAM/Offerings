@@ -1,6 +1,6 @@
 // src/db.rs - SQLite Persistence Layer
 use crate::model::{
-    DependencyInfo, InstallReason, Package, PackageIdentity, PackageMetadata, PackageSource,
+    Package, PackageIdentity, PackageMetadata, PackageSource,
     PackageVersion, TransactionLog, TransactionStatus,
 };
 use rusqlite::{params, Connection, Result as SqliteResult};
@@ -50,34 +50,8 @@ impl Database {
         conn.execute_batch(
             r#"
             -- Packages table: cached package information
-            CREATE TABLE IF NOT EXISTS packages (
-                id TEXT PRIMARY KEY,
-                name TEXT NOT NULL,
-                source TEXT NOT NULL,
-                summary TEXT DEFAULT '',
-                description TEXT DEFAULT '',
-                icon_url TEXT,
-                homepage_url TEXT,
-                documentation_url TEXT,
-                categories TEXT DEFAULT '[]',
-                screenshots TEXT DEFAULT '[]',
-                rating REAL,
-                installed_version TEXT,
-                latest_version TEXT,
-                is_installed INTEGER DEFAULT 0,
-                install_reason TEXT DEFAULT 'Explicit',
-                install_reason_pkg TEXT,
                 last_updated INTEGER NOT NULL,
                 UNIQUE(id, source)
-            );
-
-            -- Dependencies table: package dependency relationships
-            CREATE TABLE IF NOT EXISTS dependencies (
-                package_id TEXT NOT NULL,
-                dependency_id TEXT NOT NULL,
-                dependency_type TEXT DEFAULT 'runtime',
-                PRIMARY KEY (package_id, dependency_id),
-                FOREIGN KEY (package_id) REFERENCES packages(id)
             );
 
             -- Transaction logs for rollback support
@@ -107,8 +81,6 @@ impl Database {
             -- Indexes for performance
             CREATE INDEX IF NOT EXISTS idx_packages_source ON packages(source);
             CREATE INDEX IF NOT EXISTS idx_packages_installed ON packages(is_installed);
-            CREATE INDEX IF NOT EXISTS idx_dependencies_pkg ON dependencies(package_id);
-            CREATE INDEX IF NOT EXISTS idx_dependencies_dep ON dependencies(dependency_id);
             CREATE INDEX IF NOT EXISTS idx_transactions_status ON transactions(status);
             "#,
         )?;
@@ -134,18 +106,13 @@ impl Database {
         let screenshots_json = serde_json::to_string(&package.metadata.screenshots).unwrap_or_default();
         let source_str = format!("{:?}", package.identity.source);
 
-        let (install_reason, install_reason_pkg) = match &package.dependency_info.install_reason {
-            InstallReason::Explicit => ("Explicit".to_string(), None),
-            InstallReason::Dependency(pkg) => ("Dependency".to_string(), Some(pkg.clone())),
-        };
-
         conn.execute(
             r#"
             INSERT INTO packages (
                 id, name, source, summary, description, icon_url, homepage_url,
                 documentation_url, categories, screenshots, rating, installed_version,
-                latest_version, is_installed, install_reason, install_reason_pkg, last_updated
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)
+                latest_version, is_installed, last_updated
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)
             ON CONFLICT(id, source) DO UPDATE SET
                 name = excluded.name,
                 summary = excluded.summary,
@@ -159,8 +126,6 @@ impl Database {
                 installed_version = excluded.installed_version,
                 latest_version = excluded.latest_version,
                 is_installed = excluded.is_installed,
-                install_reason = excluded.install_reason,
-                install_reason_pkg = excluded.install_reason_pkg,
                 last_updated = excluded.last_updated
             "#,
             params![
@@ -176,10 +141,8 @@ impl Database {
                 screenshots_json,
                 package.metadata.rating,
                 package.version.installed,
-                package.version.latest,
+                package.version.latest.clone(),
                 package.is_installed as i32,
-                install_reason,
-                install_reason_pkg,
                 Self::now(),
             ],
         )?;
@@ -194,7 +157,7 @@ impl Database {
         let mut stmt = conn.prepare(
             "SELECT id, name, source, summary, description, icon_url, homepage_url,
              documentation_url, categories, screenshots, rating, installed_version,
-             latest_version, is_installed, install_reason, install_reason_pkg
+             latest_version, is_installed
              FROM packages WHERE id = ?1",
         )?;
 
@@ -211,7 +174,7 @@ impl Database {
         let mut stmt = conn.prepare(
             "SELECT id, name, source, summary, description, icon_url, homepage_url,
              documentation_url, categories, screenshots, rating, installed_version,
-             latest_version, is_installed, install_reason, install_reason_pkg
+             latest_version, is_installed
              FROM packages WHERE source = ?1",
         )?;
 
@@ -230,7 +193,7 @@ impl Database {
         let mut stmt = conn.prepare(
             "SELECT id, name, source, summary, description, icon_url, homepage_url,
              documentation_url, categories, screenshots, rating, installed_version,
-             latest_version, is_installed, install_reason, install_reason_pkg
+             latest_version, is_installed
              FROM packages WHERE is_installed = 1
              ORDER BY last_updated DESC",
         )?;
@@ -251,7 +214,7 @@ impl Database {
         let mut stmt = conn.prepare(
             "SELECT id, name, source, summary, description, icon_url, homepage_url,
              documentation_url, categories, screenshots, rating, installed_version,
-             latest_version, is_installed, install_reason, install_reason_pkg
+             latest_version, is_installed
              FROM packages WHERE LOWER(name) LIKE ?1 OR LOWER(summary) LIKE ?1
              ORDER BY is_installed DESC, name ASC
              LIMIT 100",
@@ -278,18 +241,10 @@ impl Database {
         let source_str: String = row.get(2)?;
         let categories_json: String = row.get(8)?;
         let screenshots_json: String = row.get(9)?;
-        let install_reason_str: String = row.get(14)?;
-        let install_reason_pkg: Option<String> = row.get(15)?;
-
         let source = Self::parse_source(&source_str);
+
         let categories: Vec<String> = serde_json::from_str(&categories_json).unwrap_or_default();
         let screenshots: Vec<String> = serde_json::from_str(&screenshots_json).unwrap_or_default();
-
-        let install_reason = if install_reason_str == "Dependency" {
-            InstallReason::Dependency(install_reason_pkg.unwrap_or_default())
-        } else {
-            InstallReason::Explicit
-        };
 
         Ok(Package {
             identity: PackageIdentity {
@@ -311,67 +266,23 @@ impl Database {
                 installed: row.get(11)?,
                 latest: row.get(12)?,
             },
-            dependency_info: DependencyInfo {
-                dependencies: vec![],
-                reverse_dependencies: vec![],
-                install_reason,
-            },
             is_installed: row.get::<_, i32>(13)? != 0,
+            alternatives: vec![],
         })
     }
 
     fn parse_source(s: &str) -> PackageSource {
         match s {
-            "APT" => PackageSource::APT,
             "Flatpak" => PackageSource::Flatpak,
             "Snap" => PackageSource::Snap,
             "AppImage" => PackageSource::AppImage,
-            "Soar" => PackageSource::Soar,
-            "GitHubRelease" => PackageSource::GitHubRelease,
+            "Pacstall" => PackageSource::Pacstall,
             _ => PackageSource::OfferingsCustom,
         }
     }
 
-    // ==================== Dependency Operations ====================
+    // Dependency management removed
 
-    /// Add a dependency relationship
-    pub fn add_dependency(&self, package_id: &str, dependency_id: &str, dep_type: &str) -> SqliteResult<()> {
-        let conn = self.conn.lock().unwrap();
-        conn.execute(
-            "INSERT OR IGNORE INTO dependencies (package_id, dependency_id, dependency_type) VALUES (?1, ?2, ?3)",
-            params![package_id, dependency_id, dep_type],
-        )?;
-        Ok(())
-    }
-
-    /// Get dependencies for a package
-    pub fn get_dependencies(&self, package_id: &str) -> SqliteResult<Vec<String>> {
-        let conn = self.conn.lock().unwrap();
-        let mut stmt = conn.prepare("SELECT dependency_id FROM dependencies WHERE package_id = ?1")?;
-        let deps = stmt
-            .query_map(params![package_id], |row| row.get(0))?
-            .filter_map(|r| r.ok())
-            .collect();
-        Ok(deps)
-    }
-
-    /// Get reverse dependencies (packages that depend on this one)
-    pub fn get_reverse_dependencies(&self, dependency_id: &str) -> SqliteResult<Vec<String>> {
-        let conn = self.conn.lock().unwrap();
-        let mut stmt = conn.prepare("SELECT package_id FROM dependencies WHERE dependency_id = ?1")?;
-        let deps = stmt
-            .query_map(params![dependency_id], |row| row.get(0))?
-            .filter_map(|r| r.ok())
-            .collect();
-        Ok(deps)
-    }
-
-    /// Clear dependencies for a package
-    pub fn clear_dependencies(&self, package_id: &str) -> SqliteResult<()> {
-        let conn = self.conn.lock().unwrap();
-        conn.execute("DELETE FROM dependencies WHERE package_id = ?1", params![package_id])?;
-        Ok(())
-    }
 
     // ==================== Transaction Operations ====================
 
@@ -492,7 +403,7 @@ mod tests {
             identity: PackageIdentity {
                 id: "test-pkg".to_string(),
                 name: "Test Package".to_string(),
-                source: PackageSource::APT,
+                source: PackageSource::Flatpak,
             },
             metadata: PackageMetadata {
                 summary: "A test package".to_string(),
@@ -508,12 +419,8 @@ mod tests {
                 installed: Some("1.0.0".to_string()),
                 latest: Some("1.1.0".to_string()),
             },
-            dependency_info: DependencyInfo {
-                dependencies: vec![],
-                reverse_dependencies: vec![],
-                install_reason: InstallReason::Explicit,
-            },
             is_installed: true,
+            alternatives: vec![],
         };
 
         db.upsert_package(&pkg).unwrap();

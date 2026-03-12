@@ -1,9 +1,6 @@
 // src/adapters/custom.rs - Offerings Custom Repository Adapter
 use super::PackageAdapter;
-use crate::model::{
-    DependencyInfo, InstallReason, OperationResult, Package, PackageIdentity, PackageMetadata,
-    PackageSource, PackageVersion,
-};
+use crate::model::{OperationResult, Package, PackageIdentity, PackageMetadata, PackageSource, PackageVersion};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -204,12 +201,8 @@ impl CustomAdapter {
                 installed: installed_version,
                 latest: Some(def.version.clone()),
             },
-            dependency_info: DependencyInfo {
-                dependencies: def.dependencies.clone(),
-                reverse_dependencies: vec![],
-                install_reason: InstallReason::Explicit,
-            },
             is_installed,
+            alternatives: vec![],
         }
     }
 
