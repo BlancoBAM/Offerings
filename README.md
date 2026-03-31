@@ -1,8 +1,25 @@
-# Offerings
+<div align="center">
+
+<img src="assets/icon-logo.png" alt="Offerings Icon" width="200" />
+
+<br/><br/>
+
+<img src="assets/logo.png" alt="Offerings Banner" width="700" />
+
+<br/><br/>
+
+**A unified GUI interface for easy desktop app management — designed for Lilith Linux**
 
 [![Build Status](https://github.com/BlancoBAM/Offerings/actions/workflows/ci.yml/badge.svg)](https://github.com/BlancoBAM/Offerings/actions)
-[![Latest Release](https://img.shields.io/github/v/release/BlancoBAM/Offerings)](https://github.com/BlancoBAM/Offerings/releases)
+[![Latest Release](https://img.shields.io/github/v/release/BlancoBAM/Offerings?include_prereleases)](https://github.com/BlancoBAM/Offerings/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+</div>
+
+---
+
+> [!WARNING]
+> **This is a beta release.** I make no guarantees that the app works as intended at this time, and welcome testing and issues. Please give your feedback! It definitely needs some polish and code cleanup — I'm sure that's not all. This was designed for an upcoming distro named **Lilith Linux**, after the demoness mythology, designed for someone specific and the theming reflects the demonic/satanic-ish theming of the distro. It's built in Rust, as is pretty much everything I write these days, with [Slint](https://slint.dev/) for the GUI.
 
 **Offerings** is a unified GUI interface for easy desktop app management designed for Lilith Linux. It combines multiple package sources into a single, beautiful interface, allowing users to discover, install, and manage applications from Flatpak, Snap, AppImage, SOAR/PkgForge, and GitHub Releases.
 
@@ -23,14 +40,14 @@
 The easiest way to use Offerings on any Linux distribution:
 
 ```bash
-wget https://github.com/BlancoBAM/Offerings/releases/latest/download/offerings-x86_64.AppImage
-chmod +x offerings-x86_64.AppImage
-./offerings-x86_64.AppImage
+wget https://github.com/BlancoBAM/Offerings/releases/latest/download/Offerings-x86_64.AppImage
+chmod +x Offerings-x86_64.AppImage
+./Offerings-x86_64.AppImage
 ```
 
 ### From Source
 
-Ensure you have the Rust toolchain and `slint` dependencies installed:
+Ensure you have the Rust toolchain and Slint dependencies installed:
 
 ```bash
 git clone https://github.com/BlancoBAM/Offerings.git
@@ -64,16 +81,33 @@ Offerings supports the following sources out of the box:
 - **PkgForge** (SOAR)
 - **GitHub Releases**
 
+## Credits and Appreciation
+
+Huge thanks go to these projects and developers, first and foremost:
+
+- **[SOAR](https://github.com/pkgforge/soar)** — An incredible terminal package manager I've used for years while distro-hopping.
+- **[AM](https://github.com/ivan-hc/AM)** — The AppImage project providing thousands of apps, with its own [GUI](https://github.com/Shikakiben/AM-GUI) and SOAR integration.
+- **[Flathub](https://flathub.org/en)** — And dedicated stores built on top of it, such as [Bazaar](https://flathub.org/en/apps/io.github.kolunmi.Bazaar) and [COSMIC Store](https://github.com/pop-os/cosmic-store), which inspired Offerings' layout and UX.
+- **[Snapcraft](https://snapcraft.io/store)** — If you use a compatible distro and don't dislike snaps.
+- **[Bauh](https://github.com/vinifmor/bauh)** — Covers most of what Offerings provides already.
+- **[KDE Discover](https://apps.kde.org/discover/)** — Does much the same as Offerings.
+- **[Autonomix](https://github.com/SgtApple/autonomix)** — Recently archived but a great concept, written in Rust.
+
+> [!TIP]
+> If Offerings isn't for you (it was designed for a single user along with a distro for the same single user), I'm sure one of the above will more than satisfy what you're looking for — and probably much better and more completely. Check them out! This was a hobby project and labor of love, and practice as I transition from pentesting to development.
+
 ## 🏗️ Project Structure
 
-- `src/`: Core application logic in Rust.
-- `ui/`: User interface definitions using Slint.
-- `assets/`: Icons, metadata catalogs, and desktop integration files.
-- `docs/`: Technical documentation and deployment guides.
+| Path | Description |
+|------|-------------|
+| `src/` | Core application logic in Rust |
+| `ui/` | User interface definitions using Slint |
+| `assets/` | Icons, metadata catalogs, and desktop integration files |
+| `docs/` | Technical documentation and deployment guides |
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
 
 ## 🤝 Contributing
 
@@ -81,4 +115,8 @@ Contributions are welcome! Please feel free to submit a Pull Request or open an 
 
 ---
 
-**Built by [BlancoBAM](https://github.com/BlancoBAM) for the Lilith Linux community.**
+<div align="center">
+
+**Built by [BlancoBAM](https://github.com/BlancoBAM) for Lilith Linux, and Katie**
+
+</div>

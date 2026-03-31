@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased] - 2024-04
+## [Unreleased] - Beta - 2024-04
 
 ### 🎉 Production Release Preparation
 
@@ -65,7 +65,7 @@ All notable changes to this project will be documented in this file.
 - **Documented**: Complete documentation for users and developers
 - **Packaged**: Ready for distribution via multiple channels
 
-## [1.0.0] - 2024-04
+## [1.0.0-beta] - 2024-04
 
 ### 🎉 Initial Production Release
 
