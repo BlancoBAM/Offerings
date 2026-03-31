@@ -9,19 +9,38 @@ pub enum NotificationType {
     /// Package installation completed
     InstallComplete { package_name: String, success: bool },
     /// Package update completed
-    UpdateComplete { package_name: String, old_version: String, new_version: String },
+    UpdateComplete {
+        package_name: String,
+        old_version: String,
+        new_version: String,
+    },
     /// Package uninstallation completed
     UninstallComplete { package_name: String },
     /// Updates are available
     UpdatesAvailable { count: usize },
     /// Operation failed with error
-    OperationFailed { operation: String, package_name: String, error: String },
+    OperationFailed {
+        operation: String,
+        package_name: String,
+        error: String,
+    },
     /// Background operation started
-    OperationStarted { operation: String, package_name: String },
+    OperationStarted {
+        operation: String,
+        package_name: String,
+    },
     /// Batch operation completed
-    BatchComplete { operation: String, count: usize, failed: usize },
+    BatchComplete {
+        operation: String,
+        count: usize,
+        failed: usize,
+    },
     /// Fallback installation succeeded
-    FallbackSuccess { package_name: String, source: String, original_source: String },
+    FallbackSuccess {
+        package_name: String,
+        source: String,
+        original_source: String,
+    },
 }
 
 /// Configuration for the notification system
@@ -63,7 +82,10 @@ pub struct NotificationManager {
 impl NotificationManager {
     pub fn new(config: NotificationConfig) -> Self {
         let (event_sender, _) = broadcast::channel(50);
-        Self { config, event_sender }
+        Self {
+            config,
+            event_sender,
+        }
     }
 
     /// Subscribe to notification events
@@ -72,7 +94,10 @@ impl NotificationManager {
     }
 
     /// Send a notification
-    pub fn notify(&self, notification_type: NotificationType) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn notify(
+        &self,
+        notification_type: NotificationType,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         // Broadcast event
         let _ = self.event_sender.send(notification_type.clone());
 
@@ -105,15 +130,15 @@ impl NotificationManager {
     pub async fn notify_async(&self, notification_type: NotificationType) {
         let config = self.config.clone();
         let event_sender = self.event_sender.clone();
-        
+
         tokio::task::spawn_blocking(move || {
             let _ = event_sender.send(notification_type.clone());
-            
+
             let manager = NotificationManager {
                 config,
                 event_sender,
             };
-            
+
             if let Err(e) = manager.send_notification(&notification_type) {
                 eprintln!("Failed to send notification: {}", e);
             }
@@ -123,7 +148,11 @@ impl NotificationManager {
     fn should_show(&self, notification_type: &NotificationType) -> bool {
         match notification_type {
             NotificationType::InstallComplete { success, .. } => {
-                if *success { self.config.notify_success } else { self.config.notify_failure }
+                if *success {
+                    self.config.notify_success
+                } else {
+                    self.config.notify_failure
+                }
             }
             NotificationType::UpdateComplete { .. } => self.config.notify_success,
             NotificationType::UninstallComplete { .. } => self.config.notify_success,
@@ -131,15 +160,25 @@ impl NotificationManager {
             NotificationType::OperationFailed { .. } => self.config.notify_failure,
             NotificationType::OperationStarted { .. } => self.config.notify_start,
             NotificationType::BatchComplete { failed, .. } => {
-                if *failed > 0 { self.config.notify_failure } else { self.config.notify_success }
+                if *failed > 0 {
+                    self.config.notify_failure
+                } else {
+                    self.config.notify_success
+                }
             }
             NotificationType::FallbackSuccess { .. } => self.config.notify_success,
         }
     }
 
-    fn build_notification_content(&self, notification_type: &NotificationType) -> (String, String, Urgency, &'static str) {
+    fn build_notification_content(
+        &self,
+        notification_type: &NotificationType,
+    ) -> (String, String, Urgency, &'static str) {
         match notification_type {
-            NotificationType::InstallComplete { package_name, success } => {
+            NotificationType::InstallComplete {
+                package_name,
+                success,
+            } => {
                 if *success {
                     (
                         "Installation Complete".to_string(),
@@ -156,9 +195,16 @@ impl NotificationManager {
                     )
                 }
             }
-            NotificationType::UpdateComplete { package_name, old_version, new_version } => (
+            NotificationType::UpdateComplete {
+                package_name,
+                old_version,
+                new_version,
+            } => (
                 "Update Complete".to_string(),
-                format!("{} updated: {} → {}", package_name, old_version, new_version),
+                format!(
+                    "{} updated: {} → {}",
+                    package_name, old_version, new_version
+                ),
                 Urgency::Normal,
                 "software-update-available",
             ),
@@ -170,23 +216,38 @@ impl NotificationManager {
             ),
             NotificationType::UpdatesAvailable { count } => (
                 "Updates Available".to_string(),
-                format!("{} package{} can be updated.", count, if *count == 1 { "" } else { "s" }),
+                format!(
+                    "{} package{} can be updated.",
+                    count,
+                    if *count == 1 { "" } else { "s" }
+                ),
                 Urgency::Low,
                 "software-update-available",
             ),
-            NotificationType::OperationFailed { operation, package_name, error } => (
+            NotificationType::OperationFailed {
+                operation,
+                package_name,
+                error,
+            } => (
                 format!("{} Failed", Self::capitalize(operation)),
                 format!("Failed to {} {}: {}", operation, package_name, error),
                 Urgency::Critical,
                 "dialog-error",
             ),
-            NotificationType::OperationStarted { operation, package_name } => (
+            NotificationType::OperationStarted {
+                operation,
+                package_name,
+            } => (
                 format!("{}...", Self::capitalize(operation)),
                 format!("{} {}...", Self::capitalize(operation), package_name),
                 Urgency::Low,
                 "system-software-install",
             ),
-            NotificationType::BatchComplete { operation, count, failed } => {
+            NotificationType::BatchComplete {
+                operation,
+                count,
+                failed,
+            } => {
                 if *failed == 0 {
                     (
                         format!("{} Complete", Self::capitalize(operation)),
@@ -197,22 +258,37 @@ impl NotificationManager {
                 } else {
                     (
                         format!("{} Complete with Errors", Self::capitalize(operation)),
-                        format!("{} {} packages, {} failed.", Self::capitalize(operation), count, failed),
+                        format!(
+                            "{} {} packages, {} failed.",
+                            Self::capitalize(operation),
+                            count,
+                            failed
+                        ),
                         Urgency::Critical,
                         "dialog-warning",
                     )
                 }
             }
-            NotificationType::FallbackSuccess { package_name, source, original_source } => (
+            NotificationType::FallbackSuccess {
+                package_name,
+                source,
+                original_source,
+            } => (
                 "Installation Successful (Fallback)".to_string(),
-                format!("{} was installed from {} after {} failed.", package_name, source, original_source),
+                format!(
+                    "{} was installed from {} after {} failed.",
+                    package_name, source, original_source
+                ),
                 Urgency::Normal,
                 "emblem-default",
             ),
         }
     }
 
-    fn send_notification(&self, notification_type: &NotificationType) -> Result<(), Box<dyn std::error::Error>> {
+    fn send_notification(
+        &self,
+        notification_type: &NotificationType,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         if !self.should_show(notification_type) {
             return Ok(());
         }
@@ -260,6 +336,13 @@ impl NotificationManager {
         });
     }
 
+    /// Notify about uninstall completion
+    pub fn notify_uninstall(&self, package_name: &str) {
+        let _ = self.notify(NotificationType::UninstallComplete {
+            package_name: package_name.to_string(),
+        });
+    }
+
     /// Notify about available updates
     pub fn notify_updates_available(&self, count: usize) {
         if count > 0 {
@@ -285,7 +368,7 @@ mod tests {
     fn test_notification_manager_creation() {
         let config = NotificationConfig::default();
         let manager = NotificationManager::new(config);
-        
+
         // Test subscription works
         let _receiver = manager.subscribe();
     }

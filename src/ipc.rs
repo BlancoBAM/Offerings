@@ -1,5 +1,5 @@
 // src/ipc.rs - IPC Server for External Control
-use crate::model::{Package, OperationResult};
+use crate::model::{OperationResult, Package};
 // use crate::model::{Package, PackageOperation, OperationResult};
 use serde::{Deserialize, Serialize};
 use std::io::{BufRead, BufReader, Write};
@@ -97,7 +97,6 @@ pub enum IpcCommand {
 /// IPC Server for handling external control requests
 pub struct IpcServer {
     socket_path: PathBuf,
-    listener: Option<UnixListener>,
 }
 
 impl IpcServer {
@@ -105,26 +104,30 @@ impl IpcServer {
     pub fn new() -> Self {
         Self {
             socket_path: Self::default_socket_path(),
-            listener: None,
         }
     }
 
     /// Create IPC server with custom socket path
     pub fn with_path(socket_path: PathBuf) -> Self {
-        Self {
-            socket_path,
-            listener: None,
-        }
+        Self { socket_path }
     }
 
     /// Get the default socket path
     fn default_socket_path() -> PathBuf {
         let uid = unsafe { libc::getuid() };
-        PathBuf::from(format!("/run/user/{}/offerings.sock", uid))
+        let runtime_dir = PathBuf::from(format!("/run/user/{}", uid));
+        if runtime_dir.is_dir() {
+            runtime_dir.join("offerings.sock")
+        } else {
+            std::env::temp_dir().join(format!("offerings-{}.sock", uid))
+        }
     }
 
     /// Start the IPC server
-    pub fn start(&mut self) -> Result<mpsc::Receiver<IpcCommand>, Box<dyn std::error::Error>> {
+    pub fn start(
+        &mut self,
+        runtime_handle: tokio::runtime::Handle,
+    ) -> Result<mpsc::Receiver<IpcCommand>, Box<dyn std::error::Error>> {
         // Remove existing socket if present
         if self.socket_path.exists() {
             std::fs::remove_file(&self.socket_path)?;
@@ -136,7 +139,7 @@ impl IpcServer {
         }
 
         let listener = UnixListener::bind(&self.socket_path)?;
-        
+
         // Set socket permissions (user only)
         #[cfg(unix)]
         {
@@ -148,10 +151,11 @@ impl IpcServer {
 
         // Clone for the listener thread
         let socket_path = self.socket_path.clone();
-        
+        let runtime_handle = runtime_handle.clone();
+
         // Spawn listener thread
         std::thread::spawn(move || {
-            Self::accept_connections(listener, command_sender, socket_path);
+            Self::accept_connections(listener, command_sender, socket_path, runtime_handle);
         });
 
         Ok(command_receiver)
@@ -161,13 +165,15 @@ impl IpcServer {
         listener: UnixListener,
         command_sender: mpsc::Sender<IpcCommand>,
         socket_path: PathBuf,
+        runtime_handle: tokio::runtime::Handle,
     ) {
         for stream in listener.incoming() {
             match stream {
                 Ok(stream) => {
                     let sender = command_sender.clone();
+                    let runtime_handle = runtime_handle.clone();
                     std::thread::spawn(move || {
-                        if let Err(e) = Self::handle_client(stream, sender) {
+                        if let Err(e) = Self::handle_client(stream, sender, runtime_handle) {
                             eprintln!("IPC client error: {}", e);
                         }
                     });
@@ -186,6 +192,7 @@ impl IpcServer {
     fn handle_client(
         mut stream: UnixStream,
         command_sender: mpsc::Sender<IpcCommand>,
+        runtime_handle: tokio::runtime::Handle,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let reader = BufReader::new(stream.try_clone()?);
 
@@ -217,13 +224,12 @@ impl IpcServer {
             let (response_sender, mut response_receiver) = mpsc::channel::<IpcResponse>(1);
 
             // Send command to main app
-            let rt = tokio::runtime::Handle::try_current()
-                .unwrap_or_else(|_| {
-                    tokio::runtime::Runtime::new().unwrap().handle().clone()
-                });
-
-            rt.block_on(async {
-                if command_sender.send(IpcCommand::Request(request, response_sender)).await.is_err() {
+            runtime_handle.block_on(async {
+                if command_sender
+                    .send(IpcCommand::Request(request, response_sender))
+                    .await
+                    .is_err()
+                {
                     return;
                 }
 
@@ -288,7 +294,7 @@ impl IpcClient {
     /// Send a request and get a response
     pub fn send(&self, request: IpcRequest) -> Result<IpcResponse, Box<dyn std::error::Error>> {
         let mut stream = UnixStream::connect(&self.socket_path)?;
-        
+
         let request_json = serde_json::to_string(&request)?;
         writeln!(stream, "{}", request_json)?;
         stream.flush()?;
@@ -307,19 +313,27 @@ impl IpcClient {
     }
 
     pub fn search(&self, query: &str) -> Result<IpcResponse, Box<dyn std::error::Error>> {
-        self.send(IpcRequest::Search { query: query.to_string() })
+        self.send(IpcRequest::Search {
+            query: query.to_string(),
+        })
     }
 
     pub fn install(&self, package_id: &str) -> Result<IpcResponse, Box<dyn std::error::Error>> {
-        self.send(IpcRequest::Install { id: package_id.to_string() })
+        self.send(IpcRequest::Install {
+            id: package_id.to_string(),
+        })
     }
 
     pub fn uninstall(&self, package_id: &str) -> Result<IpcResponse, Box<dyn std::error::Error>> {
-        self.send(IpcRequest::Uninstall { id: package_id.to_string() })
+        self.send(IpcRequest::Uninstall {
+            id: package_id.to_string(),
+        })
     }
 
     pub fn update(&self, package_id: &str) -> Result<IpcResponse, Box<dyn std::error::Error>> {
-        self.send(IpcRequest::Update { id: package_id.to_string() })
+        self.send(IpcRequest::Update {
+            id: package_id.to_string(),
+        })
     }
 
     pub fn update_all(&self) -> Result<IpcResponse, Box<dyn std::error::Error>> {
@@ -345,7 +359,9 @@ mod tests {
 
     #[test]
     fn test_request_serialization() {
-        let request = IpcRequest::Install { id: "firefox".to_string() };
+        let request = IpcRequest::Install {
+            id: "firefox".to_string(),
+        };
         let json = serde_json::to_string(&request).unwrap();
         assert!(json.contains("Install"));
         assert!(json.contains("firefox"));

@@ -1,6 +1,8 @@
 // src/adapters/custom.rs - Offerings Custom Repository Adapter
-use super::PackageAdapter;
-use crate::model::{OperationResult, Package, PackageIdentity, PackageMetadata, PackageSource, PackageVersion};
+use super::{emit_progress, start_staged_progress, PackageAdapter, ProgressCallback};
+use crate::model::{
+    OperationResult, Package, PackageIdentity, PackageMetadata, PackageSource, PackageVersion,
+};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -14,8 +16,8 @@ use tokio::process::Command;
 pub struct CustomAdapter {
     /// Path to the custom packages directory
     packages_dir: PathBuf,
-    /// Remote repository URL (optional)
-    remote_url: Option<String>,
+    /// Remote repository URLs
+    remote_urls: Vec<String>,
     /// Installed packages manifest
     manifest_path: PathBuf,
 }
@@ -78,17 +80,16 @@ impl CustomAdapter {
 
         Self {
             packages_dir: data_dir.join("custom-packages"),
-            remote_url: None,
+            remote_urls: vec![],
             manifest_path: data_dir.join("custom-manifest.json"),
         }
     }
 
-    pub fn with_remote(remote_url: String) -> Self {
+    pub fn with_remotes(remote_urls: Vec<String>) -> Self {
         let mut adapter = Self::new();
-        adapter.remote_url = Some(remote_url);
+        adapter.remote_urls = remote_urls;
         adapter
     }
-
     /// Load the installed manifest
     async fn load_manifest(&self) -> Result<InstalledManifest, Box<dyn Error + Send + Sync>> {
         if self.manifest_path.exists() {
@@ -100,7 +101,10 @@ impl CustomAdapter {
     }
 
     /// Save the installed manifest
-    async fn save_manifest(&self, manifest: &InstalledManifest) -> Result<(), Box<dyn Error + Send + Sync>> {
+    async fn save_manifest(
+        &self,
+        manifest: &InstalledManifest,
+    ) -> Result<(), Box<dyn Error + Send + Sync>> {
         fs::create_dir_all(self.manifest_path.parent().unwrap()).await?;
         let content = serde_json::to_string_pretty(manifest)?;
         fs::write(&self.manifest_path, content).await?;
@@ -108,7 +112,9 @@ impl CustomAdapter {
     }
 
     /// Load all package definitions from the packages directory
-    async fn load_definitions(&self) -> Result<Vec<CustomPackageDefinition>, Box<dyn Error + Send + Sync>> {
+    async fn load_definitions(
+        &self,
+    ) -> Result<Vec<CustomPackageDefinition>, Box<dyn Error + Send + Sync>> {
         let mut definitions = Vec::new();
 
         if !self.packages_dir.exists() {
@@ -118,7 +124,7 @@ impl CustomAdapter {
         let mut entries = fs::read_dir(&self.packages_dir).await?;
         while let Some(entry) = entries.next_entry().await? {
             let path = entry.path();
-            
+
             if path.extension().map(|e| e == "json").unwrap_or(false) {
                 if let Ok(content) = fs::read_to_string(&path).await {
                     if let Ok(def) = serde_json::from_str::<CustomPackageDefinition>(&content) {
@@ -132,9 +138,12 @@ impl CustomAdapter {
     }
 
     /// Load a specific package definition
-    async fn load_definition(&self, id: &str) -> Result<Option<CustomPackageDefinition>, Box<dyn Error + Send + Sync>> {
+    async fn load_definition(
+        &self,
+        id: &str,
+    ) -> Result<Option<CustomPackageDefinition>, Box<dyn Error + Send + Sync>> {
         let path = self.packages_dir.join(format!("{}.json", id));
-        
+
         if path.exists() {
             let content = fs::read_to_string(&path).await?;
             Ok(Some(serde_json::from_str(&content)?))
@@ -144,11 +153,15 @@ impl CustomAdapter {
     }
 
     /// Execute an installation script
-    async fn execute_script(&self, script: &str, pkg_id: &str) -> Result<String, Box<dyn Error + Send + Sync>> {
+    async fn execute_script(
+        &self,
+        script: &str,
+        pkg_id: &str,
+    ) -> Result<String, Box<dyn Error + Send + Sync>> {
         // Create a temporary script file
         let temp_dir = std::env::temp_dir();
         let script_path = temp_dir.join(format!("offerings-{}.sh", pkg_id));
-        
+
         fs::write(&script_path, script).await?;
 
         // Make executable
@@ -161,10 +174,7 @@ impl CustomAdapter {
         }
 
         // Execute
-        let output = Command::new("bash")
-            .arg(&script_path)
-            .output()
-            .await?;
+        let output = Command::new("bash").arg(&script_path).output().await?;
 
         // Clean up
         fs::remove_file(&script_path).await?;
@@ -172,15 +182,17 @@ impl CustomAdapter {
         if output.status.success() {
             Ok(String::from_utf8_lossy(&output.stdout).to_string())
         } else {
-            Err(format!(
-                "Script failed: {}",
-                String::from_utf8_lossy(&output.stderr)
-            ).into())
+            Err(format!("Script failed: {}", String::from_utf8_lossy(&output.stderr)).into())
         }
     }
 
     /// Convert definition to Package
-    fn definition_to_package(&self, def: &CustomPackageDefinition, is_installed: bool, installed_version: Option<String>) -> Package {
+    fn definition_to_package(
+        &self,
+        def: &CustomPackageDefinition,
+        is_installed: bool,
+        installed_version: Option<String>,
+    ) -> Package {
         Package {
             identity: PackageIdentity {
                 id: format!("custom:{}", def.id),
@@ -202,7 +214,10 @@ impl CustomAdapter {
                 latest: Some(def.version.clone()),
             },
             is_installed,
+            logical_app_id: None,
             alternatives: vec![],
+            last_updated: 0,
+            popularity: 0.0,
         }
     }
 
@@ -239,7 +254,11 @@ impl PackageAdapter for CustomAdapter {
             .iter()
             .map(|def| {
                 let installed = manifest.packages.get(&def.id);
-                self.definition_to_package(def, installed.is_some(), installed.map(|i| i.version.clone()))
+                self.definition_to_package(
+                    def,
+                    installed.is_some(),
+                    installed.map(|i| i.version.clone()),
+                )
             })
             .collect())
     }
@@ -252,10 +271,9 @@ impl PackageAdapter for CustomAdapter {
             .packages
             .iter()
             .filter_map(|(id, installed)| {
-                definitions
-                    .iter()
-                    .find(|d| &d.id == id)
-                    .map(|def| self.definition_to_package(def, true, Some(installed.version.clone())))
+                definitions.iter().find(|d| &d.id == id).map(|def| {
+                    self.definition_to_package(def, true, Some(installed.version.clone()))
+                })
             })
             .collect();
 
@@ -264,11 +282,15 @@ impl PackageAdapter for CustomAdapter {
 
     async fn get_package(&self, id: &str) -> Result<Option<Package>, Box<dyn Error + Send + Sync>> {
         let pkg_id = id.strip_prefix("custom:").unwrap_or(id);
-        
+
         if let Some(def) = self.load_definition(pkg_id).await? {
             let manifest = self.load_manifest().await?;
             let installed = manifest.packages.get(pkg_id);
-            Ok(Some(self.definition_to_package(&def, installed.is_some(), installed.map(|i| i.version.clone()))))
+            Ok(Some(self.definition_to_package(
+                &def,
+                installed.is_some(),
+                installed.map(|i| i.version.clone()),
+            )))
         } else {
             Ok(None)
         }
@@ -283,7 +305,11 @@ impl PackageAdapter for CustomAdapter {
         for def in &definitions {
             if let Some(installed) = manifest.packages.get(&def.id) {
                 if installed.version != def.version {
-                    updates.push(self.definition_to_package(def, true, Some(installed.version.clone())));
+                    updates.push(self.definition_to_package(
+                        def,
+                        true,
+                        Some(installed.version.clone()),
+                    ));
                 }
             }
         }
@@ -291,27 +317,34 @@ impl PackageAdapter for CustomAdapter {
         Ok(updates)
     }
 
-    async fn install(&self, package_id: &str) -> Result<OperationResult, Box<dyn Error + Send + Sync>> {
+    async fn install(
+        &self,
+        package_id: &str,
+    ) -> Result<OperationResult, Box<dyn Error + Send + Sync>> {
         let pkg_id = package_id.strip_prefix("custom:").unwrap_or(package_id);
-        
+
         let def = match self.load_definition(pkg_id).await? {
             Some(d) => d,
-            None => return Ok(OperationResult {
-                success: false,
-                message: format!("Package definition not found: {}", pkg_id),
-                updated_packages: vec![],
-            }),
+            None => {
+                return Ok(OperationResult {
+                    success: false,
+                    message: format!("Package definition not found: {}", pkg_id),
+                    updated_packages: vec![],
+                })
+            }
         };
 
         // Execute install script if present
         if let Some(script) = &def.install_script {
             match self.execute_script(script, pkg_id).await {
                 Ok(_) => {}
-                Err(e) => return Ok(OperationResult {
-                    success: false,
-                    message: format!("Installation failed: {}", e),
-                    updated_packages: vec![],
-                }),
+                Err(e) => {
+                    return Ok(OperationResult {
+                        success: false,
+                        message: format!("Installation failed: {}", e),
+                        updated_packages: vec![],
+                    })
+                }
             }
         }
 
@@ -334,19 +367,69 @@ impl PackageAdapter for CustomAdapter {
         })
     }
 
-    async fn update(&self, package_id: &str) -> Result<OperationResult, Box<dyn Error + Send + Sync>> {
+    async fn install_with_progress(
+        &self,
+        package_id: &str,
+        callback: Option<ProgressCallback>,
+    ) -> Result<OperationResult, Box<dyn Error + Send + Sync>> {
+        let progress_task = start_staged_progress(
+            callback.clone(),
+            0.05,
+            0.9,
+            0.08,
+            std::time::Duration::from_millis(700),
+        );
+        let result = self.install(package_id).await;
+        if let Some(task) = progress_task {
+            task.abort();
+        }
+        if result.as_ref().map(|r| r.success).unwrap_or(false) {
+            emit_progress(&callback, 1.0);
+        }
+        result
+    }
+
+    async fn update(
+        &self,
+        package_id: &str,
+    ) -> Result<OperationResult, Box<dyn Error + Send + Sync>> {
         // For custom packages, update is typically uninstall + install
         let uninstall_result = self.uninstall(package_id).await?;
         if !uninstall_result.success {
             return Ok(uninstall_result);
         }
-        
+
         self.install(package_id).await
     }
 
-    async fn uninstall(&self, package_id: &str) -> Result<OperationResult, Box<dyn Error + Send + Sync>> {
+    async fn update_with_progress(
+        &self,
+        package_id: &str,
+        callback: Option<ProgressCallback>,
+    ) -> Result<OperationResult, Box<dyn Error + Send + Sync>> {
+        let progress_task = start_staged_progress(
+            callback.clone(),
+            0.08,
+            0.9,
+            0.07,
+            std::time::Duration::from_millis(700),
+        );
+        let result = self.update(package_id).await;
+        if let Some(task) = progress_task {
+            task.abort();
+        }
+        if result.as_ref().map(|r| r.success).unwrap_or(false) {
+            emit_progress(&callback, 1.0);
+        }
+        result
+    }
+
+    async fn uninstall(
+        &self,
+        package_id: &str,
+    ) -> Result<OperationResult, Box<dyn Error + Send + Sync>> {
         let pkg_id = package_id.strip_prefix("custom:").unwrap_or(package_id);
-        
+
         let def = self.load_definition(pkg_id).await?;
 
         // Execute uninstall script if present
@@ -354,11 +437,13 @@ impl PackageAdapter for CustomAdapter {
             if let Some(script) = &def.uninstall_script {
                 match self.execute_script(script, pkg_id).await {
                     Ok(_) => {}
-                    Err(e) => return Ok(OperationResult {
-                        success: false,
-                        message: format!("Uninstall failed: {}", e),
-                        updated_packages: vec![],
-                    }),
+                    Err(e) => {
+                        return Ok(OperationResult {
+                            success: false,
+                            message: format!("Uninstall failed: {}", e),
+                            updated_packages: vec![],
+                        })
+                    }
                 }
             }
         }
@@ -375,9 +460,34 @@ impl PackageAdapter for CustomAdapter {
         })
     }
 
-    async fn get_dependencies(&self, package_id: &str) -> Result<Vec<String>, Box<dyn Error + Send + Sync>> {
+    async fn uninstall_with_progress(
+        &self,
+        package_id: &str,
+        callback: Option<ProgressCallback>,
+    ) -> Result<OperationResult, Box<dyn Error + Send + Sync>> {
+        let progress_task = start_staged_progress(
+            callback.clone(),
+            0.1,
+            0.9,
+            0.08,
+            std::time::Duration::from_millis(650),
+        );
+        let result = self.uninstall(package_id).await;
+        if let Some(task) = progress_task {
+            task.abort();
+        }
+        if result.as_ref().map(|r| r.success).unwrap_or(false) {
+            emit_progress(&callback, 1.0);
+        }
+        result
+    }
+
+    async fn get_dependencies(
+        &self,
+        package_id: &str,
+    ) -> Result<Vec<String>, Box<dyn Error + Send + Sync>> {
         let pkg_id = package_id.strip_prefix("custom:").unwrap_or(package_id);
-        
+
         if let Some(def) = self.load_definition(pkg_id).await? {
             Ok(def.dependencies)
         } else {
@@ -386,24 +496,30 @@ impl PackageAdapter for CustomAdapter {
     }
 
     async fn refresh_cache(&self) -> Result<(), Box<dyn Error + Send + Sync>> {
-        // If we have a remote URL, sync definitions
-        if let Some(url) = &self.remote_url {
+        // If we have remote URLs, sync definitions
+        for url in &self.remote_urls {
             let client = reqwest::Client::new();
-            let response = client.get(url).send().await?;
-            
-            if response.status().is_success() {
-                let definitions: Vec<CustomPackageDefinition> = response.json().await?;
-                
-                fs::create_dir_all(&self.packages_dir).await?;
-                
-                for def in definitions {
-                    let path = self.packages_dir.join(format!("{}.json", def.id));
-                    let content = serde_json::to_string_pretty(&def)?;
-                    fs::write(path, content).await?;
+            match client.get(url).send().await {
+                Ok(response) => {
+                    if response.status().is_success() {
+                        if let Ok(definitions) =
+                            response.json::<Vec<CustomPackageDefinition>>().await
+                        {
+                            fs::create_dir_all(&self.packages_dir).await?;
+
+                            for def in definitions {
+                                let path = self.packages_dir.join(format!("{}.json", def.id));
+                                if let Ok(content) = serde_json::to_string_pretty(&def) {
+                                    let _ = fs::write(path, content).await;
+                                }
+                            }
+                        }
+                    }
                 }
+                Err(e) => eprintln!("Warning: Failed to sync source {}: {}", url, e),
             }
         }
-        
+
         Ok(())
     }
 }

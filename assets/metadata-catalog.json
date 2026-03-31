@@ -1,0 +1,80 @@
+{
+  "entries": [
+    {
+      "package_id": "flatpak:org.mozilla.firefox",
+      "source_ids": ["org.mozilla.firefox", "firefox"],
+      "logical_id": "firefox",
+      "name": "Firefox",
+      "summary": "Fast, privacy-aware web browser",
+      "description": "Firefox is a full-featured web browser with tracking protection, syncing, extensions, and strong Linux desktop integration.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/org.mozilla.firefox.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/org.mozilla.firefox-stable/1248x702/1.png"
+      ],
+      "homepage_url": "https://www.mozilla.org/firefox/",
+      "documentation_url": "https://support.mozilla.org/products/firefox",
+      "categories": ["Network", "Browser", "Lilith"],
+      "popularity": 0.95
+    },
+    {
+      "package_id": "flatpak:org.gimp.GIMP",
+      "source_ids": ["org.gimp.GIMP", "gimp"],
+      "logical_id": "gimp",
+      "name": "GIMP",
+      "summary": "Advanced image editor",
+      "description": "GIMP is a professional raster graphics editor used for photo retouching, illustration, compositing, and asset production.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/org.gimp.GIMP.png",
+      "homepage_url": "https://www.gimp.org/",
+      "categories": ["Graphics", "Lilith"],
+      "popularity": 0.82
+    },
+    {
+      "package_id": "flatpak:org.videolan.VLC",
+      "source_ids": ["org.videolan.VLC", "vlc"],
+      "logical_id": "vlc",
+      "name": "VLC",
+      "summary": "Versatile media player",
+      "description": "VLC plays local files, network streams, and discs with wide codec support and a lightweight desktop UI.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/org.videolan.VLC.png",
+      "homepage_url": "https://www.videolan.org/vlc/",
+      "categories": ["Video", "AudioVideo", "Lilith"],
+      "popularity": 0.9
+    },
+    {
+      "package_id": "flatpak:com.spotify.Client",
+      "source_ids": ["com.spotify.Client", "spotify"],
+      "logical_id": "spotify",
+      "name": "Spotify",
+      "summary": "Digital music service",
+      "description": "Spotify gives you instant access to millions of songs, from old favorites to the latest hits. Play music and more on Linux.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/com.spotify.Client.png",
+      "homepage_url": "https://www.spotify.com/",
+      "categories": ["Audio", "Lilith"],
+      "popularity": 0.92
+    },
+    {
+      "package_id": "snap:code",
+      "source_ids": ["code", "vscode"],
+      "logical_id": "code",
+      "name": "Visual Studio Code",
+      "summary": "Code editing redefined",
+      "description": "VS Code is a lightweight but powerful source code editor which runs on your desktop and is available for Linux.",
+      "icon_url": "https://raw.githubusercontent.com/microsoft/vscode-icons/master/icons/ready/vscode.png",
+      "homepage_url": "https://code.visualstudio.com/",
+      "categories": ["Development", "Lilith"],
+      "popularity": 0.98
+    },
+    {
+      "package_id": "appimage:obsidian",
+      "source_ids": ["obsidian"],
+      "logical_id": "obsidian",
+      "name": "Obsidian",
+      "summary": "Knowledge base and note-taking app",
+      "description": "Obsidian is a local-first Markdown knowledge base with backlinking, graph navigation, and plugin extensibility.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/md.obsidian.Obsidian.png",
+      "homepage_url": "https://obsidian.md/",
+      "categories": ["Office", "Productivity", "Lilith"],
+      "popularity": 0.88
+    }
+  ]
+}

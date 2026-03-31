@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Offerings
+GenericName=App Store
+Comment=Lilith Linux package store — Flatpak, Snap, Homebrew, GitHub Releases, and more
+Exec=/home/lilith/Lilith-Linux/Offerings/target/release/offerings
+Icon=/home/lilith/Lilith-Linux/Offerings/assets/icon-logo.png
+Categories=System;PackageManager;Settings;
+Keywords=store;install;packages;flatpak;snap;homebrew;
+Terminal=false
+StartupNotify=true
+StartupWMClass=offerings

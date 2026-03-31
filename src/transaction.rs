@@ -8,10 +8,24 @@ use tokio::sync::{broadcast, Mutex as TokioMutex};
 /// Transaction event for subscribers
 #[derive(Clone, Debug)]
 pub enum TransactionEvent {
-    Started { transaction_id: i64, operation: String, package_id: String },
-    Progress { transaction_id: i64, percent: f32, message: String },
-    Completed { transaction_id: i64, success: bool, message: String },
-    RolledBack { transaction_id: i64 },
+    Started {
+        transaction_id: i64,
+        operation: String,
+        package_id: String,
+    },
+    Progress {
+        transaction_id: i64,
+        percent: f32,
+        message: String,
+    },
+    Completed {
+        transaction_id: i64,
+        success: bool,
+        message: String,
+    },
+    RolledBack {
+        transaction_id: i64,
+    },
 }
 
 /// Transaction manager for safe package operations
@@ -53,7 +67,9 @@ impl TransactionManager {
     ) -> Result<OperationResult, Box<dyn std::error::Error + Send + Sync>>
     where
         F: FnOnce() -> Fut,
-        Fut: std::future::Future<Output = Result<OperationResult, Box<dyn std::error::Error + Send + Sync>>>,
+        Fut: std::future::Future<
+            Output = Result<OperationResult, Box<dyn std::error::Error + Send + Sync>>,
+        >,
     {
         // Acquire operation lock
         let _lock = self.operation_lock.lock().await;
@@ -73,9 +89,9 @@ impl TransactionManager {
             .unwrap_or_else(|| "unknown".to_string());
 
         // Start transaction
-        let transaction_id = self
-            .db
-            .start_transaction(op_name, &pkg_id, &source, previous_state.as_deref())?;
+        let transaction_id =
+            self.db
+                .start_transaction(op_name, &pkg_id, &source, previous_state.as_deref())?;
 
         // Notify subscribers
         let _ = self.event_sender.send(TransactionEvent::Started {
@@ -100,7 +116,11 @@ impl TransactionManager {
                     transaction_id,
                     op_result.success,
                     new_state.as_deref(),
-                    if op_result.success { None } else { Some(&op_result.message) },
+                    if op_result.success {
+                        None
+                    } else {
+                        Some(&op_result.message)
+                    },
                 )?;
 
                 let _ = self.event_sender.send(TransactionEvent::Completed {
@@ -110,7 +130,8 @@ impl TransactionManager {
                 });
             }
             Err(e) => {
-                self.db.complete_transaction(transaction_id, false, None, Some(&e.to_string()))?;
+                self.db
+                    .complete_transaction(transaction_id, false, None, Some(&e.to_string()))?;
 
                 let _ = self.event_sender.send(TransactionEvent::Completed {
                     transaction_id,
@@ -135,7 +156,7 @@ impl TransactionManager {
     /// Attempt to rollback a transaction
     pub async fn rollback(&self, transaction_id: i64) -> Result<(), Box<dyn std::error::Error>> {
         let transactions = self.db.get_recent_transactions(100)?;
-        
+
         let transaction = transactions
             .iter()
             .find(|t| t.id == transaction_id)
@@ -148,7 +169,9 @@ impl TransactionManager {
         // Mark as rolled back
         self.db.rollback_transaction(transaction_id)?;
 
-        let _ = self.event_sender.send(TransactionEvent::RolledBack { transaction_id });
+        let _ = self
+            .event_sender
+            .send(TransactionEvent::RolledBack { transaction_id });
 
         Ok(())
     }
@@ -156,11 +179,17 @@ impl TransactionManager {
     /// Queue an operation for later execution
     pub fn queue_operation(&self, operation: PackageOperation, priority: i32) {
         let mut queue = self.pending_operations.lock().unwrap();
-        
-        let pending = PendingOperation { operation, priority };
-        
+
+        let pending = PendingOperation {
+            operation,
+            priority,
+        };
+
         // Insert based on priority (higher priority first)
-        let pos = queue.iter().position(|op| op.priority < priority).unwrap_or(queue.len());
+        let pos = queue
+            .iter()
+            .position(|op| op.priority < priority)
+            .unwrap_or(queue.len());
         queue.insert(pos, pending);
     }
 
@@ -171,14 +200,22 @@ impl TransactionManager {
     }
 
     /// Get recent transaction history
-    pub fn get_history(&self, limit: i32) -> Result<Vec<TransactionLog>, Box<dyn std::error::Error>> {
+    pub fn get_history(
+        &self,
+        limit: i32,
+    ) -> Result<Vec<TransactionLog>, Box<dyn std::error::Error>> {
         Ok(self.db.get_recent_transactions(limit)?)
     }
 
     /// Check if there are any failed transactions that might need attention
-    pub fn get_failed_transactions(&self) -> Result<Vec<TransactionLog>, Box<dyn std::error::Error>> {
+    pub fn get_failed_transactions(
+        &self,
+    ) -> Result<Vec<TransactionLog>, Box<dyn std::error::Error>> {
         let all = self.db.get_recent_transactions(50)?;
-        Ok(all.into_iter().filter(|t| t.status == TransactionStatus::Failed).collect())
+        Ok(all
+            .into_iter()
+            .filter(|t| t.status == TransactionStatus::Failed)
+            .collect())
     }
 }
 
@@ -195,7 +232,7 @@ impl RollbackEngine {
     /// Get rollback points (completed transactions that can be undone)
     pub fn get_rollback_points(&self) -> Result<Vec<RollbackPoint>, Box<dyn std::error::Error>> {
         let transactions = self.db.get_recent_transactions(20)?;
-        
+
         Ok(transactions
             .into_iter()
             .filter(|t| t.status == TransactionStatus::Completed && t.previous_state.is_some())
@@ -215,7 +252,10 @@ impl RollbackEngine {
     }
 
     /// Get the previous state for a transaction
-    pub fn get_previous_state(&self, transaction_id: i64) -> Result<Option<String>, Box<dyn std::error::Error>> {
+    pub fn get_previous_state(
+        &self,
+        transaction_id: i64,
+    ) -> Result<Option<String>, Box<dyn std::error::Error>> {
         let transactions = self.db.get_recent_transactions(100)?;
         Ok(transactions
             .into_iter()
@@ -245,7 +285,7 @@ mod tests {
         let manager = TransactionManager::new(db);
 
         let op = PackageOperation::Install("test-pkg".to_string());
-        
+
         let result = manager
             .execute(&op, None, || async {
                 Ok(OperationResult {

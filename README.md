@@ -1,89 +1,84 @@
 # Offerings
 
-**Offerings** is a modern, unified package manager GUI for Linux, designed to simplify application management across multiple package formats. Built with **Rust** and **Slint**, it provides a high-performance, aesthetically pleasing, and responsive interface for discovering, installing, and managing software.
+[![Build Status](https://github.com/BlancoBAM/Offerings/actions/workflows/ci.yml/badge.svg)](https://github.com/BlancoBAM/Offerings/actions)
+[![Latest Release](https://img.shields.io/github/v/release/BlancoBAM/Offerings)](https://github.com/BlancoBAM/Offerings/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Features
+**Offerings** is a unified GUI interface for easy desktop app management designed for Lilith Linux. It combines multiple package sources into a single, beautiful interface, allowing users to discover, install, and manage applications from Flatpak, Snap, AppImage, SOAR/PkgForge, and GitHub Releases.
 
-*   **Unified Package Management**: Seamlessly manage packages from multiple sources in one interface:
-    *   **Flatpak** - Sandboxed applications from Flathub
-    *   **AppImage** - Portable applications via AM (AppImage Manager)
-    *   **Pacstall** - Ubuntu/Debian packages from Pacstall
-    *   **Snap** - Canonical's Snap packages
-    *   **Custom** - Developer-curated packages
-*   **Smart Source Selection**: When an app is available from multiple sources, easily switch between them via dropdown menu
-*   **Automatic Fallback**: If installation fails from one source, automatically tries alternative sources and notifies you of success
-*   **Auto-Updating App List**: Background refresh automatically detects new apps, removed apps, and version updates from all sources
-*   **Modern User Interface**: A sleek, "Dark Black" themed UI built with Slint
-    *   Sidebar navigation with categorized views
-    *   Responsive and fluid animations
-    *   Optimized for readability with alternating row colors
-*   **Developer Curated**: Featured "Lilith" category for developer-curated applications
+## ✨ Features
 
-## Installation
+- 📦 **Multi-Source Support**: Seamless integration with Flatpak, Snap, AppImage (AM), SOAR/pkgforge, and GitHub Releases.
+- 🎨 **Modern Interface**: Built with Slint for a fast, responsive, and native-feeling experience.
+- 🛡️ **Lilith Curated Section**: Hand-picked applications specifically chosen for Lilith Linux users.
+- 🔄 **Automated Updates**: Background synchronization ensures you always have the latest versions and package metadata.
+- 🔍 **Powerful Search**: Fuzzy matching across all enabled sources to find exactly what you need.
+- 🗂️ **Smart Categorization**: Automated classification of thousands of apps into intuitive categories.
+- ⚡ **Performance First**: Efficient SQLite-backed caching and incremental loading for smooth browsing of massive catalogs.
 
-### Prerequisites
+## 🚀 Installation
 
-Ensure you have the following installed on your system:
-*   **Rust & Cargo**: [Install Rust](https://www.rust-lang.org/tools/install)
-*   **System Dependencies** (Debian/Ubuntu):
-    ```bash
-    sudo apt install build-essential libfontconfig1-dev libxcb-xfixes0-dev libxcb-shape0-dev libxcb1-dev libxkbcommon-dev
-    ```
-    *Note: Additional dependencies for specific adapters (like Flatpak or Snap) may be required.*
+### AppImage (Recommended)
 
-### Building from Source
+The easiest way to use Offerings on any Linux distribution:
 
-1.  **Clone the repository**:
-    ```bash
-    git clone https://github.com/BlancoBAM/Offerings.git
-    cd Offerings
-    ```
+```bash
+wget https://github.com/BlancoBAM/Offerings/releases/latest/download/offerings-x86_64.AppImage
+chmod +x offerings-x86_64.AppImage
+./offerings-x86_64.AppImage
+```
 
-2.  **Build the application**:
-    ```bash
-    cargo build --release
-    ```
+### From Source
 
-3.  **Run**:
-    ```bash
-    ./target/release/offerings
-    ```
+Ensure you have the Rust toolchain and `slint` dependencies installed:
 
-## Usage
+```bash
+git clone https://github.com/BlancoBAM/Offerings.git
+cd Offerings
+cargo build --release
+./target/release/offerings
+```
 
-### Navigation
-The sidebar allows you to filter applications by category. The **Featured** section highlights popular apps, while the **Lilith** category showcases developer-curated applications.
+### Via Cargo
 
-### Installing a Package
-1.  Use the **Search Bar** at the top to find a package by name or description
-2.  Click on a package to view its details
-3.  If the package is available from multiple sources, use the **Source** dropdown to select your preferred source
-4.  Click "Install" to install the package
+```bash
+cargo install offerings
+```
 
-### Automatic Fallback
-If installation fails from the primary source, Offerings will automatically attempt to install from alternative sources. You'll receive a notification when a fallback installation succeeds.
+## 🛠️ Configuration for Developers
 
-### Updates
-Offerings automatically checks for updates in the background. You can also manually check for updates. The app list refreshes every 30 minutes to detect new apps, removed apps, and version changes.
+### Lilith Curated Section
 
-## Architecture
+The Lilith section is populated via `assets/metadata-catalog.json`. To curate apps for this section:
 
-Offerings is built using a clean, modular architecture:
+1. Add an entry to `assets/metadata-catalog.json`.
+2. Include `"Lilith"` in the `categories` array.
+3. The app will automatically populate the Lilith section upon the next refresh.
 
-*   **Frontend**: [Slint UI](https://slint.dev) (`ui/main.slint`) - A lightweight, native UI toolkit
-*   **Backend**: Rust (`src/backend.rs`) - Handles business logic, state, and orchestration
-*   **Adapters**: (`src/adapters/`) - Modular traits for connecting to different package managers
-*   **Database**: SQLite (`src/db.rs`) - Caches package metadata
-*   **IPC**: Unix domain sockets for external control and single-instance locking
+### Package Sources
 
-### Priority System
-When duplicates exist across sources, packages are prioritized in this order:
-1.  Flatpak (highest)
-2.  AppImage
-3.  Pacstall
-4.  Snap
-5.  Custom (lowest)
+Offerings supports the following sources out of the box:
+- **Flathub** (Flatpak)
+- **Snap Store** (Snap)
+- **AM / AppImage** (AppImage)
+- **PkgForge** (SOAR)
+- **GitHub Releases**
 
-## License
+## 🏗️ Project Structure
 
-This project is open-source and available under the [MIT License](LICENSE).
+- `src/`: Core application logic in Rust.
+- `ui/`: User interface definitions using Slint.
+- `assets/`: Icons, metadata catalogs, and desktop integration files.
+- `docs/`: Technical documentation and deployment guides.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request or open an issue for bug reports and feature requests.
+
+---
+
+**Built by [BlancoBAM](https://github.com/BlancoBAM) for the Lilith Linux community.**

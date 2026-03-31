@@ -2,13 +2,13 @@
 name = "offerings"
 version = "0.1.0"
 edition = "2021"
-description = "A unified package manager GUI for Linux"
-authors = ["Offerings Team"]
+description = "A unified GUI interface for easy desktop app management designed for Lilith Linux"
+authors = ["BlancoBAM"]
 license = "MIT"
 
 [dependencies]
-# UI Framework
-slint = "=1.0.0"
+# UI Framework - Use 1.9.x with femtovg renderer for better compatibility
+slint = { version = "1.9", features = ["backend-winit", "renderer-winit-femtovg", "accessibility"] }
 
 # Async Runtime
 tokio = { version = "1.35", features = ["full", "process"] }
@@ -19,6 +19,7 @@ serde_json = "1.0"
 
 # Async traits
 async-trait = "0.1"
+futures = "0.3"
 
 # Database
 rusqlite = { version = "0.30", features = ["bundled"] }
@@ -37,19 +38,40 @@ chrono = { version = "0.4", features = ["serde"] }
 
 # Unix-specific features
 libc = "0.2"
+image = "0.25.10"
 
 [build-dependencies]
-slint-build = "=1.0.0"
+slint-build = "1.9"
 
 [[bin]]
 name = "offerings"
 path = "src/main.rs"
 
 [profile.release]
-lto = true
-codegen-units = 1
-opt-level = 3
+lto = false
+codegen-units = 16
+opt-level = 2
 strip = true
 
 [profile.dev]
 opt-level = 1
+
+[package.metadata.deb]
+maintainer = "BlancoBAM"
+copyright = "2024, BlancoBAM"
+license-file = ["LICENSE", "0"]
+depends = "$auto, libgtk-3-0, libayatana-appindicator3-1, libwebkit2gtk-4.0-37"
+section = "utility"
+priority = "optional"
+assets = [
+    ["target/release/offerings", "usr/bin/offerings", "755"],
+    ["assets/icon-logo.png", "usr/share/icons/hicolor/scalable/apps/offerings.png", "644"],
+    ["offerings.desktop", "usr/share/applications/offerings.desktop", "644"],
+]
+
+[package.metadata.generate-rpm]
+assets = [
+    { source = "target/release/offerings", dest = "/usr/bin/offerings", mode = "755" },
+    { source = "assets/icon-logo.png", dest = "/usr/share/icons/hicolor/scalable/apps/offerings.png", mode = "644" },
+    { source = "offerings.desktop", dest = "/usr/share/applications/offerings.desktop", mode = "644" },
+]

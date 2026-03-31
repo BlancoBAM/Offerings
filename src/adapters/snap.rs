@@ -1,6 +1,11 @@
 // src/adapters/snap.rs - Snap Package Manager Adapter
-use super::{command_exists, run_command, run_sudo_command, PackageAdapter};
-use crate::model::{OperationResult, Package, PackageIdentity, PackageMetadata, PackageSource, PackageVersion};
+use super::{
+    command_exists, emit_progress, run_command, run_sudo_command, start_staged_progress,
+    PackageAdapter, ProgressCallback,
+};
+use crate::model::{
+    OperationResult, Package, PackageIdentity, PackageMetadata, PackageSource, PackageVersion,
+};
 use async_trait::async_trait;
 use std::error::Error;
 
@@ -52,7 +57,10 @@ impl SnapAdapter {
                         latest: Some(version.to_string()),
                     },
                     is_installed: true,
+                    logical_app_id: None,
                     alternatives: vec![],
+                    last_updated: 0,
+                    popularity: 0.0,
                 };
 
                 packages.push(pkg);
@@ -103,7 +111,10 @@ impl SnapAdapter {
                         latest: Some(version.to_string()),
                     },
                     is_installed: false,
+                    logical_app_id: None,
                     alternatives: vec![],
+                    last_updated: 0,
+                    popularity: 0.0,
                 };
 
                 packages.push(pkg);
@@ -126,7 +137,7 @@ impl SnapAdapter {
 
         for line in output.lines() {
             let _line_lower = line.to_lowercase();
-            
+
             if line.starts_with("name:") {
                 name = line.trim_start_matches("name:").trim().to_string();
                 in_description = false;
@@ -140,8 +151,13 @@ impl SnapAdapter {
                 in_description = true;
             } else if line.starts_with("installed:") {
                 is_installed = true;
-                version = line.trim_start_matches("installed:").trim()
-                    .split_whitespace().next().unwrap_or("").to_string();
+                version = line
+                    .trim_start_matches("installed:")
+                    .trim()
+                    .split_whitespace()
+                    .next()
+                    .unwrap_or("")
+                    .to_string();
                 in_description = false;
             } else if line.starts_with("snap-id:") || line.starts_with("tracking:") {
                 in_description = false;
@@ -165,7 +181,11 @@ impl SnapAdapter {
             },
             metadata: PackageMetadata {
                 summary: summary.clone(),
-                description: if description.is_empty() { summary } else { description },
+                description: if description.is_empty() {
+                    summary
+                } else {
+                    description
+                },
                 icon_url: None,
                 screenshots: vec![],
                 documentation_url: None,
@@ -174,11 +194,18 @@ impl SnapAdapter {
                 rating: None,
             },
             version: PackageVersion {
-                installed: if is_installed { Some(version.clone()) } else { None },
+                installed: if is_installed {
+                    Some(version.clone())
+                } else {
+                    None
+                },
                 latest: Some(version),
             },
             is_installed,
+            logical_app_id: None,
             alternatives: vec![],
+            last_updated: 0,
+            popularity: 0.0,
         })
     }
 }
@@ -213,9 +240,9 @@ impl PackageAdapter for SnapAdapter {
 
     async fn get_package(&self, id: &str) -> Result<Option<Package>, Box<dyn Error + Send + Sync>> {
         let snap_name = id.strip_prefix("snap:").unwrap_or(id);
-        
+
         let output = run_command("snap", &["info", snap_name][..]).await;
-        
+
         match output {
             Ok(output) => Ok(self.parse_info_output(&output)),
             Err(_) => Ok(None),
@@ -224,11 +251,12 @@ impl PackageAdapter for SnapAdapter {
 
     async fn check_updates(&self) -> Result<Vec<Package>, Box<dyn Error + Send + Sync>> {
         let output = run_command("snap", &["refresh", "--list"][..]).await;
-        
+
         match output {
             Ok(output) => {
                 let mut packages = Vec::new();
-                for line in output.lines().skip(1) { // Skip header
+                for line in output.lines().skip(1) {
+                    // Skip header
                     let parts: Vec<&str> = line.split_whitespace().collect();
                     if !parts.is_empty() {
                         let name = parts[0];
@@ -241,7 +269,10 @@ impl PackageAdapter for SnapAdapter {
                             metadata: PackageMetadata::default(),
                             version: PackageVersion::default(),
                             is_installed: true,
+                            logical_app_id: None,
                             alternatives: vec![],
+                            last_updated: 0,
+                            popularity: 0.0,
                         });
                     }
                 }
@@ -251,9 +282,12 @@ impl PackageAdapter for SnapAdapter {
         }
     }
 
-    async fn install(&self, package_id: &str) -> Result<OperationResult, Box<dyn Error + Send + Sync>> {
+    async fn install(
+        &self,
+        package_id: &str,
+    ) -> Result<OperationResult, Box<dyn Error + Send + Sync>> {
         let snap_name = package_id.strip_prefix("snap:").unwrap_or(package_id);
-        
+
         match run_sudo_command("snap", &["install", snap_name][..]).await {
             Ok(_) => Ok(OperationResult {
                 success: true,
@@ -268,9 +302,34 @@ impl PackageAdapter for SnapAdapter {
         }
     }
 
-    async fn update(&self, package_id: &str) -> Result<OperationResult, Box<dyn Error + Send + Sync>> {
+    async fn install_with_progress(
+        &self,
+        package_id: &str,
+        callback: Option<ProgressCallback>,
+    ) -> Result<OperationResult, Box<dyn Error + Send + Sync>> {
+        let progress_task = start_staged_progress(
+            callback.clone(),
+            0.05,
+            0.9,
+            0.07,
+            std::time::Duration::from_millis(950),
+        );
+        let result = self.install(package_id).await;
+        if let Some(task) = progress_task {
+            task.abort();
+        }
+        if result.as_ref().map(|r| r.success).unwrap_or(false) {
+            emit_progress(&callback, 1.0);
+        }
+        result
+    }
+
+    async fn update(
+        &self,
+        package_id: &str,
+    ) -> Result<OperationResult, Box<dyn Error + Send + Sync>> {
         let snap_name = package_id.strip_prefix("snap:").unwrap_or(package_id);
-        
+
         match run_sudo_command("snap", &["refresh", snap_name][..]).await {
             Ok(_) => Ok(OperationResult {
                 success: true,
@@ -285,9 +344,34 @@ impl PackageAdapter for SnapAdapter {
         }
     }
 
-    async fn uninstall(&self, package_id: &str) -> Result<OperationResult, Box<dyn Error + Send + Sync>> {
+    async fn update_with_progress(
+        &self,
+        package_id: &str,
+        callback: Option<ProgressCallback>,
+    ) -> Result<OperationResult, Box<dyn Error + Send + Sync>> {
+        let progress_task = start_staged_progress(
+            callback.clone(),
+            0.08,
+            0.92,
+            0.06,
+            std::time::Duration::from_millis(900),
+        );
+        let result = self.update(package_id).await;
+        if let Some(task) = progress_task {
+            task.abort();
+        }
+        if result.as_ref().map(|r| r.success).unwrap_or(false) {
+            emit_progress(&callback, 1.0);
+        }
+        result
+    }
+
+    async fn uninstall(
+        &self,
+        package_id: &str,
+    ) -> Result<OperationResult, Box<dyn Error + Send + Sync>> {
         let snap_name = package_id.strip_prefix("snap:").unwrap_or(package_id);
-        
+
         match run_sudo_command("snap", &["remove", snap_name][..]).await {
             Ok(_) => Ok(OperationResult {
                 success: true,
@@ -302,9 +386,46 @@ impl PackageAdapter for SnapAdapter {
         }
     }
 
-    async fn get_dependencies(&self, _package_id: &str) -> Result<Vec<String>, Box<dyn Error + Send + Sync>> {
+    async fn uninstall_with_progress(
+        &self,
+        package_id: &str,
+        callback: Option<ProgressCallback>,
+    ) -> Result<OperationResult, Box<dyn Error + Send + Sync>> {
+        let progress_task = start_staged_progress(
+            callback.clone(),
+            0.1,
+            0.9,
+            0.08,
+            std::time::Duration::from_millis(850),
+        );
+        let result = self.uninstall(package_id).await;
+        if let Some(task) = progress_task {
+            task.abort();
+        }
+        if result.as_ref().map(|r| r.success).unwrap_or(false) {
+            emit_progress(&callback, 1.0);
+        }
+        result
+    }
+
+    async fn get_dependencies(
+        &self,
+        _package_id: &str,
+    ) -> Result<Vec<String>, Box<dyn Error + Send + Sync>> {
         // Snaps are self-contained, they don't have traditional dependencies
         Ok(vec![])
+    }
+
+    async fn launch(
+        &self,
+        package_id: &str,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        let id = package_id.strip_prefix("snap:").unwrap_or(package_id);
+        tokio::process::Command::new("snap")
+            .arg("run")
+            .arg(id)
+            .spawn()?;
+        Ok(())
     }
 
     async fn refresh_cache(&self) -> Result<(), Box<dyn Error + Send + Sync>> {

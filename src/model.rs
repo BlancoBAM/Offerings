@@ -7,19 +7,45 @@ use std::collections::HashMap;
 pub enum PackageSource {
     Flatpak,
     AppImage,
-    Pacstall,
+    Soar,
     Snap,
+    Homebrew,
+    GitHubRelease,
     OfferingsCustom,
+    OfferingsLilith,
 }
 
 impl PackageSource {
+    pub fn from_id(id: &str) -> Self {
+        if id.starts_with("flatpak:") {
+            Self::Flatpak
+        } else if id.starts_with("appimage:") {
+            Self::AppImage
+        } else if id.starts_with("soar:") {
+            Self::Soar
+        } else if id.starts_with("snap:") {
+            Self::Snap
+        } else if id.starts_with("homebrew:") || id.starts_with("brew:") {
+            Self::Homebrew
+        } else if id.starts_with("github:") {
+            Self::GitHubRelease
+        } else if id.starts_with("lilith:") {
+            Self::OfferingsLilith
+        } else {
+            Self::OfferingsCustom
+        }
+    }
+
     pub fn label(&self) -> &'static str {
         match self {
             Self::Flatpak => "Flatpak",
-            Self::AppImage => "AppImage",
-            Self::Pacstall => "Pacstall",
+            Self::AppImage => "AM / AppImage",
+            Self::Soar => "SOAR / PkgForge",
             Self::Snap => "Snap",
-            Self::OfferingsCustom => "Offerings",
+            Self::Homebrew => "Homebrew",
+            Self::GitHubRelease => "GitHub Release",
+            Self::OfferingsCustom => "Custom",
+            Self::OfferingsLilith => "Lilith",
         }
     }
 
@@ -27,9 +53,12 @@ impl PackageSource {
         match self {
             Self::Flatpak => "application-x-flatpak",
             Self::AppImage => "application-x-executable",
-            Self::Pacstall => "package-x-generic",
+            Self::Soar => "package-x-generic",
             Self::Snap => "snap-symbolic",
+            Self::Homebrew => "package-x-generic",
+            Self::GitHubRelease => "system-software-install",
             Self::OfferingsCustom => "emblem-package",
+            Self::OfferingsLilith => "emblem-favorite",
         }
     }
 
@@ -38,17 +67,20 @@ impl PackageSource {
         vec![
             Self::Flatpak,
             Self::AppImage,
-            Self::Pacstall,
+            Self::Soar,
             Self::Snap,
+            Self::Homebrew,
+            Self::GitHubRelease,
             Self::OfferingsCustom,
+            Self::OfferingsLilith,
         ]
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PackageIdentity {
-    pub id: String,           // Unique ID across all sources (source:name format)
-    pub name: String,         // Display name
+    pub id: String,   // Unique ID across all sources (source:name format)
+    pub name: String, // Display name
     pub source: PackageSource,
 }
 
@@ -79,7 +111,9 @@ impl PackageVersion {
     }
 
     pub fn display_installed(&self) -> String {
-        self.installed.clone().unwrap_or_else(|| "Not installed".to_string())
+        self.installed
+            .clone()
+            .unwrap_or_else(|| "Not installed".to_string())
     }
 
     pub fn display_latest(&self) -> String {
@@ -87,31 +121,63 @@ impl PackageVersion {
     }
 }
 
-
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Package {
     pub identity: PackageIdentity,
     pub metadata: PackageMetadata,
     pub version: PackageVersion,
     pub is_installed: bool,
+    pub logical_app_id: Option<String>,
     pub alternatives: Vec<PackageIdentity>,
+    pub last_updated: i64, // Unix timestamp
+    pub popularity: f32,   // Normalized value (e.g. 0.0 - 1.0)
 }
 
 impl Package {
     pub fn is_app(&self) -> bool {
+        // Consider it an app if it has categories OR if it's installed OR if it has a meaningful name
         !self.metadata.categories.is_empty()
+            || self.is_installed
+            || (!self.identity.name.is_empty()
+                && !self.identity.name.contains(".Platform")
+                && !self.identity.name.contains(".Sdk"))
     }
 
     /// Get the short ID without source prefix
     pub fn short_id(&self) -> &str {
-        self.identity.id.split(':').nth(1).unwrap_or(&self.identity.id)
+        self.identity
+            .id
+            .split(':')
+            .nth(1)
+            .unwrap_or(&self.identity.id)
+    }
+
+    /// Wave 15.0: Check if an app is "stale" (unmaintained)
+    pub fn is_stale(&self) -> bool {
+        if self.last_updated == 0 {
+            return false;
+        } // Unknown is not necessarily stale
+
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64;
+        let age_days = (now - self.last_updated) as f32 / (24.0 * 3600.0);
+
+        // Stale if > 2 years old AND low popularity
+        age_days > 730.0 && self.popularity < 0.2
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SourceItem {
+    pub name: String,
+    pub url: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HomePageContent {
-    pub featured_apps: Vec<String>, // Package IDs
+    pub featured_apps: Vec<String>,                       // Package IDs
     pub category_showcases: HashMap<String, Vec<String>>, // Category -> Package IDs
 }
 
@@ -122,7 +188,7 @@ impl Default for HomePageContent {
         category_showcases.insert("Development".to_string(), vec![]);
         category_showcases.insert("Audio".to_string(), vec![]);
         category_showcases.insert("Video".to_string(), vec![]);
-        
+
         Self {
             featured_apps: vec![],
             category_showcases,
@@ -218,9 +284,9 @@ pub struct PackagePermission {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum PermissionLevel {
-    Safe,       // Normal/expected permissions
-    Moderate,   // Worth noting
-    Dangerous,  // Security-sensitive
+    Safe,      // Normal/expected permissions
+    Moderate,  // Worth noting
+    Dangerous, // Security-sensitive
 }
 
 /// Transaction log entry for rollback support
@@ -280,17 +346,72 @@ impl Category {
     /// Get standard freedesktop.org categories
     pub fn standard_categories() -> Vec<Self> {
         vec![
-            Self { id: "AudioVideo".to_string(), name: "Audio & Video".to_string(), icon: "multimedia".to_string(), description: "Media players and editors".to_string() },
-            Self { id: "Development".to_string(), name: "Development".to_string(), icon: "applications-development".to_string(), description: "IDEs, compilers, and tools".to_string() },
-            Self { id: "Education".to_string(), name: "Education".to_string(), icon: "applications-education".to_string(), description: "Learning and teaching tools".to_string() },
-            Self { id: "Game".to_string(), name: "Games".to_string(), icon: "applications-games".to_string(), description: "Games and entertainment".to_string() },
-            Self { id: "Graphics".to_string(), name: "Graphics".to_string(), icon: "applications-graphics".to_string(), description: "Image and design tools".to_string() },
-            Self { id: "Network".to_string(), name: "Internet".to_string(), icon: "applications-internet".to_string(), description: "Browsers, email, and networking".to_string() },
-            Self { id: "Office".to_string(), name: "Office".to_string(), icon: "applications-office".to_string(), description: "Productivity and office suites".to_string() },
-            Self { id: "Science".to_string(), name: "Science".to_string(), icon: "applications-science".to_string(), description: "Scientific and math tools".to_string() },
-            Self { id: "Settings".to_string(), name: "Settings".to_string(), icon: "preferences-system".to_string(), description: "System configuration".to_string() },
-            Self { id: "System".to_string(), name: "System".to_string(), icon: "applications-system".to_string(), description: "System utilities".to_string() },
-            Self { id: "Utility".to_string(), name: "Utilities".to_string(), icon: "applications-utilities".to_string(), description: "General purpose tools".to_string() },
+            Self {
+                id: "AudioVideo".to_string(),
+                name: "Audio & Video".to_string(),
+                icon: "multimedia".to_string(),
+                description: "Media players and editors".to_string(),
+            },
+            Self {
+                id: "Development".to_string(),
+                name: "Development".to_string(),
+                icon: "applications-development".to_string(),
+                description: "IDEs, compilers, and tools".to_string(),
+            },
+            Self {
+                id: "Education".to_string(),
+                name: "Education".to_string(),
+                icon: "applications-education".to_string(),
+                description: "Learning and teaching tools".to_string(),
+            },
+            Self {
+                id: "Game".to_string(),
+                name: "Games".to_string(),
+                icon: "applications-games".to_string(),
+                description: "Games and entertainment".to_string(),
+            },
+            Self {
+                id: "Graphics".to_string(),
+                name: "Graphics".to_string(),
+                icon: "applications-graphics".to_string(),
+                description: "Image and design tools".to_string(),
+            },
+            Self {
+                id: "Network".to_string(),
+                name: "Internet".to_string(),
+                icon: "applications-internet".to_string(),
+                description: "Browsers, email, and networking".to_string(),
+            },
+            Self {
+                id: "Office".to_string(),
+                name: "Office".to_string(),
+                icon: "applications-office".to_string(),
+                description: "Productivity and office suites".to_string(),
+            },
+            Self {
+                id: "Science".to_string(),
+                name: "Science".to_string(),
+                icon: "applications-science".to_string(),
+                description: "Scientific and math tools".to_string(),
+            },
+            Self {
+                id: "Settings".to_string(),
+                name: "Settings".to_string(),
+                icon: "preferences-system".to_string(),
+                description: "System configuration".to_string(),
+            },
+            Self {
+                id: "System".to_string(),
+                name: "System".to_string(),
+                icon: "applications-system".to_string(),
+                description: "System utilities".to_string(),
+            },
+            Self {
+                id: "Utility".to_string(),
+                name: "Utilities".to_string(),
+                icon: "applications-utilities".to_string(),
+                description: "General purpose tools".to_string(),
+            },
         ]
     }
 }
@@ -342,6 +463,4 @@ mod tests {
         };
         assert!(!version.has_update());
     }
-
-
 }
