@@ -1,80 +1,1010 @@
 {
   "entries": [
     {
-      "package_id": "flatpak:org.mozilla.firefox",
-      "source_ids": ["org.mozilla.firefox", "firefox"],
-      "logical_id": "firefox",
-      "name": "Firefox",
-      "summary": "Fast, privacy-aware web browser",
-      "description": "Firefox is a full-featured web browser with tracking protection, syncing, extensions, and strong Linux desktop integration.",
-      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/org.mozilla.firefox.png",
-      "screenshots": [
-        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/org.mozilla.firefox-stable/1248x702/1.png"
+      "package_id": "flatpak:io.unobserved.espansoGUI",
+      "source_ids": [
+        "io.unobserved.espansoGUI",
+        "espansogui"
       ],
-      "homepage_url": "https://www.mozilla.org/firefox/",
-      "documentation_url": "https://support.mozilla.org/products/firefox",
-      "categories": ["Network", "Browser", "Lilith"],
-      "popularity": 0.95
+      "logical_id": "espansogui",
+      "name": "Espanso GUI",
+      "summary": "GUI for the cross-platform text expander",
+      "categories": [
+        "Productivity",
+        "Lilith"
+      ],
+      "popularity": 0.75
     },
     {
-      "package_id": "flatpak:org.gimp.GIMP",
-      "source_ids": ["org.gimp.GIMP", "gimp"],
-      "logical_id": "gimp",
-      "name": "GIMP",
-      "summary": "Advanced image editor",
-      "description": "GIMP is a professional raster graphics editor used for photo retouching, illustration, compositing, and asset production.",
-      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/org.gimp.GIMP.png",
-      "homepage_url": "https://www.gimp.org/",
-      "categories": ["Graphics", "Lilith"],
+      "package_id": "flatpak:com.matthiasn.lotti",
+      "source_ids": [
+        "com.matthiasn.lotti",
+        "lotti"
+      ],
+      "logical_id": "lotti",
+      "name": "Lotti",
+      "summary": "Lightweight distraction-free writing app",
+      "categories": [
+        "Productivity",
+        "Writing",
+        "Lilith"
+      ],
+      "popularity": 0.7
+    },
+    {
+      "package_id": "flatpak:io.github.shonebinu.Brief",
+      "source_ids": [
+        "io.github.shonebinu.Brief",
+        "brief"
+      ],
+      "logical_id": "brief",
+      "name": "Brief",
+      "summary": "Minimal note-taking application",
+      "categories": [
+        "Productivity",
+        "Lilith"
+      ],
+      "popularity": 0.65
+    },
+    {
+      "package_id": "flatpak:com.tominlab.wonderpen",
+      "source_ids": [
+        "com.tominlab.wonderpen",
+        "wonderpen"
+      ],
+      "logical_id": "wonderpen",
+      "name": "WonderPen",
+      "summary": "Distraction-free writing app for focused creativity",
+      "categories": [
+        "Productivity",
+        "Writing",
+        "Lilith"
+      ],
+      "popularity": 0.72
+    },
+    {
+      "package_id": "flatpak:app.tintero.Tintero",
+      "source_ids": [
+        "app.tintero.Tintero",
+        "tintero"
+      ],
+      "logical_id": "tintero",
+      "name": "Tintero",
+      "summary": "Markdown editor with a clean, minimal interface",
+      "categories": [
+        "Productivity",
+        "Writing",
+        "Lilith"
+      ],
+      "popularity": 0.68
+    },
+    {
+      "package_id": "flatpak:com.vixalien.sticky",
+      "source_ids": [
+        "com.vixalien.sticky",
+        "sticky"
+      ],
+      "logical_id": "sticky",
+      "name": "Sticky Notes",
+      "summary": "Simple sticky notes application for your desktop",
+      "categories": [
+        "Productivity",
+        "Lilith"
+      ],
+      "popularity": 0.7
+    },
+    {
+      "package_id": "flatpak:io.github.alainm23.planify",
+      "source_ids": [
+        "io.github.alainm23.planify",
+        "planify"
+      ],
+      "logical_id": "planify",
+      "name": "Planify",
+      "summary": "Task management app with a beautiful UI",
+      "categories": [
+        "Productivity",
+        "Lilith"
+      ],
+      "popularity": 0.8
+    },
+    {
+      "package_id": "flatpak:io.github.troyeguo.koodo-reader",
+      "source_ids": [
+        "io.github.troyeguo.koodo-reader",
+        "koodo-reader"
+      ],
+      "logical_id": "koodo-reader",
+      "name": "Koodo Reader",
+      "summary": "All-in-one ebook reader supporting many formats",
+      "categories": [
+        "Productivity",
+        "Reading",
+        "Lilith"
+      ],
       "popularity": 0.82
     },
     {
-      "package_id": "flatpak:org.videolan.VLC",
-      "source_ids": ["org.videolan.VLC", "vlc"],
-      "logical_id": "vlc",
-      "name": "VLC",
-      "summary": "Versatile media player",
-      "description": "VLC plays local files, network streams, and discs with wide codec support and a lightweight desktop UI.",
-      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/org.videolan.VLC.png",
-      "homepage_url": "https://www.videolan.org/vlc/",
-      "categories": ["Video", "AudioVideo", "Lilith"],
+      "package_id": "flatpak:com.remnote.RemNote",
+      "source_ids": [
+        "com.remnote.RemNote",
+        "remnote"
+      ],
+      "logical_id": "remnote",
+      "name": "RemNote",
+      "summary": "Knowledge management and spaced repetition tool",
+      "categories": [
+        "Productivity",
+        "Education",
+        "Lilith"
+      ],
+      "popularity": 0.78
+    },
+    {
+      "package_id": "flatpak:dev.mariinkys.Oboete",
+      "source_ids": [
+        "dev.mariinkys.Oboete",
+        "oboete"
+      ],
+      "logical_id": "oboete",
+      "name": "Oboete",
+      "summary": "Flashcard and spaced repetition learning app",
+      "categories": [
+        "Education",
+        "Productivity",
+        "Lilith"
+      ],
+      "popularity": 0.65
+    },
+    {
+      "package_id": "flatpak:io.github.ans_ibrahim.Memento",
+      "source_ids": [
+        "io.github.ans_ibrahim.Memento",
+        "memento"
+      ],
+      "logical_id": "memento",
+      "name": "Memento",
+      "summary": "Memory and note-taking application",
+      "categories": [
+        "Productivity",
+        "Lilith"
+      ],
+      "popularity": 0.62
+    },
+    {
+      "package_id": "snap:journal",
+      "source_ids": [
+        "journal"
+      ],
+      "logical_id": "journal",
+      "name": "Journal",
+      "summary": "Simple journaling and diary application",
+      "categories": [
+        "Productivity",
+        "Writing",
+        "Lilith"
+      ],
+      "popularity": 0.65
+    },
+    {
+      "package_id": "flatpak:io.github.quantum_mutnauq.fast_reader_gtk",
+      "source_ids": [
+        "io.github.quantum_mutnauq.fast_reader_gtk",
+        "fast-reader-gtk"
+      ],
+      "logical_id": "fast-reader-gtk",
+      "name": "Fast Reader GTK",
+      "summary": "Speed reading tool with GTK interface",
+      "categories": [
+        "Productivity",
+        "Reading",
+        "Lilith"
+      ],
+      "popularity": 0.55
+    },
+    {
+      "package_id": "flatpak:io.github.schwarzen.colormydesktop",
+      "source_ids": [
+        "io.github.schwarzen.colormydesktop",
+        "colormydesktop"
+      ],
+      "logical_id": "colormydesktop",
+      "name": "Color My Desktop",
+      "summary": "Customize your desktop color scheme",
+      "categories": [
+        "Settings",
+        "Lilith"
+      ],
+      "popularity": 0.6
+    },
+    {
+      "package_id": "flatpak:page.codeberg.JakobDev.jdSystemMonitor",
+      "source_ids": [
+        "page.codeberg.JakobDev.jdSystemMonitor",
+        "jdsystemmonitor"
+      ],
+      "logical_id": "jdsystemmonitor",
+      "name": "jd System Monitor",
+      "summary": "System resource monitoring and process viewer",
+      "categories": [
+        "System",
+        "Lilith"
+      ],
+      "popularity": 0.7
+    },
+    {
+      "package_id": "flatpak:org.tabos.saldo",
+      "source_ids": [
+        "org.tabos.saldo",
+        "saldo"
+      ],
+      "logical_id": "saldo",
+      "name": "Saldo",
+      "summary": "Personal finance and budget tracker",
+      "categories": [
+        "Office",
+        "Finance",
+        "Lilith"
+      ],
+      "popularity": 0.65
+    },
+    {
+      "package_id": "flatpak:org.gnome.NetworkDisplays",
+      "source_ids": [
+        "org.gnome.NetworkDisplays",
+        "network-displays"
+      ],
+      "logical_id": "network-displays",
+      "name": "Network Displays",
+      "summary": "Stream your display over the network (Miracast)",
+      "categories": [
+        "System",
+        "Network",
+        "Lilith"
+      ],
+      "popularity": 0.6
+    },
+    {
+      "package_id": "flatpak:org.gnome.SimpleScan",
+      "source_ids": [
+        "org.gnome.SimpleScan",
+        "simple-scan"
+      ],
+      "logical_id": "simple-scan",
+      "name": "Document Scanner",
+      "summary": "Simple document scanning application",
+      "categories": [
+        "Office",
+        "Lilith"
+      ],
+      "popularity": 0.72
+    },
+    {
+      "package_id": "flatpak:org.ksnip.ksnip",
+      "source_ids": [
+        "org.ksnip.ksnip",
+        "ksnip"
+      ],
+      "logical_id": "ksnip",
+      "name": "Ksnip",
+      "summary": "Cross-platform screenshot tool with annotation",
+      "categories": [
+        "Graphics",
+        "Utility",
+        "Lilith"
+      ],
+      "popularity": 0.78
+    },
+    {
+      "package_id": "flatpak:org.gnome.Boxes",
+      "source_ids": [
+        "org.gnome.Boxes",
+        "boxes"
+      ],
+      "logical_id": "boxes",
+      "name": "GNOME Boxes",
+      "summary": "Simple virtual machine manager",
+      "categories": [
+        "System",
+        "Virtualization",
+        "Lilith"
+      ],
+      "popularity": 0.8
+    },
+    {
+      "package_id": "github:winapps-org/winapps",
+      "source_ids": [
+        "winapps"
+      ],
+      "logical_id": "winapps",
+      "name": "WinApps",
+      "summary": "Run Windows apps seamlessly on Linux",
+      "categories": [
+        "System",
+        "Virtualization",
+        "Lilith"
+      ],
+      "popularity": 0.75
+    },
+    {
+      "package_id": "github:aspizu/nixite",
+      "source_ids": [
+        "nixite"
+      ],
+      "logical_id": "nixite",
+      "name": "Nixite",
+      "summary": "Nix-based system configuration tool",
+      "categories": [
+        "System",
+        "Development",
+        "Lilith"
+      ],
+      "popularity": 0.55
+    },
+    {
+      "package_id": "github:gethomepage/homepage",
+      "source_ids": [
+        "homepage"
+      ],
+      "logical_id": "homepage",
+      "name": "Homepage",
+      "summary": "Modern, secure, and highly customizable application dashboard",
+      "categories": [
+        "Network",
+        "Utility",
+        "Lilith"
+      ],
+      "popularity": 0.82
+    },
+    {
+      "package_id": "flatpak:org.kde.digikam",
+      "source_ids": [
+        "org.kde.digikam",
+        "digikam"
+      ],
+      "logical_id": "digikam",
+      "name": "digiKam",
+      "summary": "Professional photo management and editing",
+      "categories": [
+        "Graphics",
+        "Photography",
+        "Lilith"
+      ],
+      "popularity": 0.85
+    },
+    {
+      "package_id": "flatpak:org.fontforge.FontForge",
+      "source_ids": [
+        "org.fontforge.FontForge",
+        "fontforge"
+      ],
+      "logical_id": "fontforge",
+      "name": "FontForge",
+      "summary": "Free, open-source font editor",
+      "categories": [
+        "Graphics",
+        "Development",
+        "Lilith"
+      ],
+      "popularity": 0.7
+    },
+    {
+      "package_id": "flatpak:io.github.qcanvas.QCanvasApp",
+      "source_ids": [
+        "io.github.qcanvas.QCanvasApp",
+        "qcanvas"
+      ],
+      "logical_id": "qcanvas",
+      "name": "QCanvas",
+      "summary": "Drawing and canvas application",
+      "categories": [
+        "Graphics",
+        "Lilith"
+      ],
+      "popularity": 0.55
+    },
+    {
+      "package_id": "flatpak:io.github.thiefmd.themegenerator",
+      "source_ids": [
+        "io.github.thiefmd.themegenerator",
+        "themegenerator"
+      ],
+      "logical_id": "themegenerator",
+      "name": "Theme Generator",
+      "summary": "Generate and customize GTK themes",
+      "categories": [
+        "Settings",
+        "Graphics",
+        "Lilith"
+      ],
+      "popularity": 0.65
+    },
+    {
+      "package_id": "flatpak:es.estoes.wallpaperDownloader",
+      "source_ids": [
+        "es.estoes.wallpaperDownloader",
+        "wallpaperdownloader"
+      ],
+      "logical_id": "wallpaperdownloader",
+      "name": "Wallpaper Downloader",
+      "summary": "Download and manage desktop wallpapers",
+      "categories": [
+        "Settings",
+        "Lilith"
+      ],
+      "popularity": 0.72
+    },
+    {
+      "package_id": "flatpak:com.github.maoschanz.DynamicWallpaperEditor",
+      "source_ids": [
+        "com.github.maoschanz.DynamicWallpaperEditor",
+        "dynamic-wallpaper-editor"
+      ],
+      "logical_id": "dynamic-wallpaper-editor",
+      "name": "Dynamic Wallpaper Editor",
+      "summary": "Create and edit dynamic wallpapers for GNOME",
+      "categories": [
+        "Settings",
+        "Lilith"
+      ],
+      "popularity": 0.68
+    },
+    {
+      "package_id": "flatpak:com.ktechpit.wonderwall",
+      "source_ids": [
+        "com.ktechpit.wonderwall",
+        "wonderwall"
+      ],
+      "logical_id": "wonderwall",
+      "name": "Wonderwall",
+      "summary": "Beautiful wallpaper manager",
+      "categories": [
+        "Settings",
+        "Lilith"
+      ],
+      "popularity": 0.7
+    },
+    {
+      "package_id": "flatpak:com.ktechpit.colorwall",
+      "source_ids": [
+        "com.ktechpit.colorwall",
+        "colorwall"
+      ],
+      "logical_id": "colorwall",
+      "name": "ColorWall",
+      "summary": "Dynamic color-based wallpaper generator",
+      "categories": [
+        "Settings",
+        "Lilith"
+      ],
+      "popularity": 0.62
+    },
+    {
+      "package_id": "flatpak:io.github.swordpuffin.wardrobe",
+      "source_ids": [
+        "io.github.swordpuffin.wardrobe",
+        "wardrobe"
+      ],
+      "logical_id": "wardrobe",
+      "name": "Wardrobe",
+      "summary": "Theme and appearance manager for Linux",
+      "categories": [
+        "Settings",
+        "Lilith"
+      ],
+      "popularity": 0.68
+    },
+    {
+      "package_id": "flatpak:io.github.debasish_patra_1987.linuxthemestore",
+      "source_ids": [
+        "io.github.debasish_patra_1987.linuxthemestore",
+        "linuxthemestore"
+      ],
+      "logical_id": "linuxthemestore",
+      "name": "Linux Theme Store",
+      "summary": "Browse and install Linux themes and icons",
+      "categories": [
+        "Settings",
+        "Lilith"
+      ],
+      "popularity": 0.65
+    },
+    {
+      "package_id": "appimage:pling-store",
+      "source_ids": [
+        "pling-store"
+      ],
+      "logical_id": "pling-store",
+      "name": "Pling Store",
+      "summary": "Browse and install content from the OpenDesktop network",
+      "categories": [
+        "Settings",
+        "Graphics",
+        "Lilith"
+      ],
+      "popularity": 0.7
+    },
+    {
+      "package_id": "flatpak:app.drey.Warp",
+      "source_ids": [
+        "app.drey.Warp",
+        "warp"
+      ],
+      "logical_id": "warp",
+      "name": "Warp",
+      "summary": "Blazingly fast, Rust-based terminal emulator",
+      "categories": [
+        "System",
+        "Development",
+        "Lilith"
+      ],
+      "popularity": 0.85
+    },
+    {
+      "package_id": "flatpak:org.wezfurlong.wezterm",
+      "source_ids": [
+        "org.wezfurlong.wezterm",
+        "wezterm"
+      ],
+      "logical_id": "wezterm",
+      "name": "WezTerm",
+      "summary": "GPU-accelerated terminal emulator with multiplexing",
+      "categories": [
+        "System",
+        "Development",
+        "Lilith"
+      ],
+      "popularity": 0.88
+    },
+    {
+      "package_id": "flatpak:com.sublimehq.SublimeText",
+      "source_ids": [
+        "com.sublimehq.SublimeText",
+        "sublime-text"
+      ],
+      "logical_id": "sublime-text",
+      "name": "Sublime Text",
+      "summary": "Sophisticated text editor for code and markup",
+      "categories": [
+        "Development",
+        "Lilith"
+      ],
       "popularity": 0.9
     },
     {
-      "package_id": "flatpak:com.spotify.Client",
-      "source_ids": ["com.spotify.Client", "spotify"],
-      "logical_id": "spotify",
-      "name": "Spotify",
-      "summary": "Digital music service",
-      "description": "Spotify gives you instant access to millions of songs, from old favorites to the latest hits. Play music and more on Linux.",
-      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/com.spotify.Client.png",
-      "homepage_url": "https://www.spotify.com/",
-      "categories": ["Audio", "Lilith"],
-      "popularity": 0.92
+      "package_id": "appimage:warp",
+      "source_ids": [
+        "warp"
+      ],
+      "logical_id": "warp-appimage",
+      "name": "Warp (AppImage)",
+      "summary": "Blazingly fast terminal emulator (AppImage)",
+      "categories": [
+        "System",
+        "Development",
+        "Lilith"
+      ],
+      "popularity": 0.8
     },
     {
-      "package_id": "snap:code",
-      "source_ids": ["code", "vscode"],
-      "logical_id": "code",
-      "name": "Visual Studio Code",
-      "summary": "Code editing redefined",
-      "description": "VS Code is a lightweight but powerful source code editor which runs on your desktop and is available for Linux.",
-      "icon_url": "https://raw.githubusercontent.com/microsoft/vscode-icons/master/icons/ready/vscode.png",
-      "homepage_url": "https://code.visualstudio.com/",
-      "categories": ["Development", "Lilith"],
-      "popularity": 0.98
+      "package_id": "appimage:hyper",
+      "source_ids": [
+        "hyper"
+      ],
+      "logical_id": "hyper",
+      "name": "Hyper",
+      "summary": "Extensible terminal built on web technologies",
+      "categories": [
+        "System",
+        "Development",
+        "Lilith"
+      ],
+      "popularity": 0.75
     },
     {
-      "package_id": "appimage:obsidian",
-      "source_ids": ["obsidian"],
-      "logical_id": "obsidian",
-      "name": "Obsidian",
-      "summary": "Knowledge base and note-taking app",
-      "description": "Obsidian is a local-first Markdown knowledge base with backlinking, graph navigation, and plugin extensibility.",
-      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/md.obsidian.Obsidian.png",
-      "homepage_url": "https://obsidian.md/",
-      "categories": ["Office", "Productivity", "Lilith"],
+      "package_id": "github:wavetermdev/waveterm",
+      "source_ids": [
+        "waveterm"
+      ],
+      "logical_id": "waveterm",
+      "name": "Wave Terminal",
+      "summary": "Open-source terminal for the AI era with inline content",
+      "categories": [
+        "System",
+        "Development",
+        "Lilith"
+      ],
+      "popularity": 0.78
+    },
+    {
+      "package_id": "github:johnlindquist/kit",
+      "source_ids": [
+        "kit"
+      ],
+      "logical_id": "kit",
+      "name": "Kit",
+      "summary": "Scriptable automation toolkit for developers",
+      "categories": [
+        "Development",
+        "Utility",
+        "Lilith"
+      ],
+      "popularity": 0.7
+    },
+    {
+      "package_id": "github:psygreg/linuxtoys",
+      "source_ids": [
+        "linuxtoys"
+      ],
+      "logical_id": "linuxtoys",
+      "name": "Linux Toys",
+      "summary": "Collection of useful Linux utilities and scripts",
+      "categories": [
+        "Utility",
+        "Development",
+        "Lilith"
+      ],
+      "popularity": 0.55
+    },
+    {
+      "package_id": "flatpak:us.zoom.Zoom",
+      "source_ids": [
+        "us.zoom.Zoom",
+        "zoom"
+      ],
+      "logical_id": "zoom",
+      "name": "Zoom",
+      "summary": "Video conferencing and online meetings",
+      "categories": [
+        "Network",
+        "AudioVideo",
+        "Lilith"
+      ],
       "popularity": 0.88
+    },
+    {
+      "package_id": "flatpak:com.github.IsmaelMartinez.teams_for_linux",
+      "source_ids": [
+        "com.github.IsmaelMartinez.teams_for_linux",
+        "teams-for-linux"
+      ],
+      "logical_id": "teams-for-linux",
+      "name": "Teams for Linux",
+      "summary": "Unofficial Microsoft Teams client for Linux",
+      "categories": [
+        "Network",
+        "AudioVideo",
+        "Lilith"
+      ],
+      "popularity": 0.8
+    },
+    {
+      "package_id": "flatpak:me.proton.Mail",
+      "source_ids": [
+        "me.proton.Mail",
+        "proton-mail"
+      ],
+      "logical_id": "proton-mail",
+      "name": "Proton Mail",
+      "summary": "Secure, encrypted email service",
+      "categories": [
+        "Network",
+        "Office",
+        "Lilith"
+      ],
+      "popularity": 0.85
+    },
+    {
+      "package_id": "flatpak:me.proton.Pass",
+      "source_ids": [
+        "me.proton.Pass",
+        "proton-pass"
+      ],
+      "logical_id": "proton-pass",
+      "name": "Proton Pass",
+      "summary": "Secure password manager from Proton",
+      "categories": [
+        "Security",
+        "Utility",
+        "Lilith"
+      ],
+      "popularity": 0.82
+    },
+    {
+      "package_id": "flatpak:org.ferdium.Ferdium",
+      "source_ids": [
+        "org.ferdium.Ferdium",
+        "ferdium"
+      ],
+      "logical_id": "ferdium",
+      "name": "Ferdium",
+      "summary": "All-in-one messaging app combining Slack, WhatsApp, and more",
+      "categories": [
+        "Network",
+        "Lilith"
+      ],
+      "popularity": 0.78
+    },
+    {
+      "package_id": "flatpak:io.github.halfmexican.Mingle",
+      "source_ids": [
+        "io.github.halfmexican.Mingle",
+        "mingle"
+      ],
+      "logical_id": "mingle",
+      "name": "Mingle",
+      "summary": "Unified messaging and communication hub",
+      "categories": [
+        "Network",
+        "Lilith"
+      ],
+      "popularity": 0.65
+    },
+    {
+      "package_id": "flatpak:app.zen_browser.zen",
+      "source_ids": [
+        "app.zen_browser.zen",
+        "zen-browser"
+      ],
+      "logical_id": "zen-browser",
+      "name": "Zen Browser",
+      "summary": "Privacy-focused, beautifully designed web browser",
+      "categories": [
+        "Network",
+        "Browser",
+        "Lilith"
+      ],
+      "popularity": 0.85
+    },
+    {
+      "package_id": "appimage:browseros",
+      "source_ids": [
+        "browseros"
+      ],
+      "logical_id": "browseros",
+      "name": "BrowserOS",
+      "summary": "Browser-based operating system experience",
+      "categories": [
+        "Network",
+        "Browser",
+        "Lilith"
+      ],
+      "popularity": 0.55
+    },
+    {
+      "package_id": "flatpak:io.github.alamahant.TarotCaster",
+      "source_ids": [
+        "io.github.alamahant.TarotCaster",
+        "tarotcaster"
+      ],
+      "logical_id": "tarotcaster",
+      "name": "Tarot Caster",
+      "summary": "Tarot card reading and divination tool",
+      "categories": [
+        "Entertainment",
+        "Lilith"
+      ],
+      "popularity": 0.6
+    },
+    {
+      "package_id": "flatpak:land.arcana.TarotCanvas",
+      "source_ids": [
+        "land.arcana.TarotCanvas",
+        "tarotcanvas"
+      ],
+      "logical_id": "tarotcanvas",
+      "name": "Tarot Canvas",
+      "summary": "Interactive tarot reading experience",
+      "categories": [
+        "Entertainment",
+        "Lilith"
+      ],
+      "popularity": 0.58
+    },
+    {
+      "package_id": "flatpak:io.github.alamahant.Asteria",
+      "source_ids": [
+        "io.github.alamahant.Asteria",
+        "asteria"
+      ],
+      "logical_id": "asteria",
+      "name": "Asteria",
+      "summary": "Astrology and star chart application",
+      "categories": [
+        "Entertainment",
+        "Education",
+        "Lilith"
+      ],
+      "popularity": 0.62
+    },
+    {
+      "package_id": "flatpak:it.astrogods.AstroGods",
+      "source_ids": [
+        "it.astrogods.AstroGods",
+        "astrogods"
+      ],
+      "logical_id": "astrogods",
+      "name": "AstroGods",
+      "summary": "Mythology and astrology reference",
+      "categories": [
+        "Entertainment",
+        "Education",
+        "Lilith"
+      ],
+      "popularity": 0.55
+    },
+    {
+      "package_id": "flatpak:org.stellarium.Stellarium",
+      "source_ids": [
+        "org.stellarium.Stellarium",
+        "stellarium"
+      ],
+      "logical_id": "stellarium",
+      "name": "Stellarium",
+      "summary": "Realistic 3D planetarium and sky simulator",
+      "categories": [
+        "Education",
+        "Science",
+        "Lilith"
+      ],
+      "popularity": 0.88
+    },
+    {
+      "package_id": "flatpak:com.rafaelmardojai.Blanket",
+      "source_ids": [
+        "com.rafaelmardojai.Blanket",
+        "blanket"
+      ],
+      "logical_id": "blanket",
+      "name": "Blanket",
+      "summary": "Listen to ambient sounds for focus and relaxation",
+      "categories": [
+        "Audio",
+        "Lilith"
+      ],
+      "popularity": 0.78
+    },
+    {
+      "package_id": "flatpak:net.ankiweb.Anki",
+      "source_ids": [
+        "net.ankiweb.Anki",
+        "anki"
+      ],
+      "logical_id": "anki",
+      "name": "Anki",
+      "summary": "Powerful spaced repetition flashcard program",
+      "categories": [
+        "Education",
+        "Productivity",
+        "Lilith"
+      ],
+      "popularity": 0.9
+    },
+    {
+      "package_id": "flatpak:dev.toastbits.spmp",
+      "source_ids": [
+        "dev.toastbits.spmp",
+        "spmp"
+      ],
+      "logical_id": "spmp",
+      "name": "SpMp",
+      "summary": "Spotify-compatible music player client",
+      "categories": [
+        "Audio",
+        "Lilith"
+      ],
+      "popularity": 0.65
+    },
+    {
+      "package_id": "flatpak:com.wps.Office",
+      "source_ids": [
+        "com.wps.Office",
+        "wps-office"
+      ],
+      "logical_id": "wps-office",
+      "name": "WPS Office",
+      "summary": "Full office suite with word processor, spreadsheets, and presentations",
+      "categories": [
+        "Office",
+        "Lilith"
+      ],
+      "popularity": 0.85
+    },
+    {
+      "package_id": "flatpak:net.bontal.Catalyst",
+      "source_ids": [
+        "net.bontal.Catalyst",
+        "catalyst"
+      ],
+      "logical_id": "catalyst",
+      "name": "Catalyst",
+      "summary": "Productivity and workflow management tool",
+      "categories": [
+        "Productivity",
+        "Office",
+        "Lilith"
+      ],
+      "popularity": 0.6
+    },
+    {
+      "package_id": "flatpak:com.github.dahenson.agenda",
+      "source_ids": [
+        "com.github.dahenson.agenda",
+        "agenda"
+      ],
+      "logical_id": "agenda",
+      "name": "Agenda",
+      "summary": "Simple calendar and scheduling application",
+      "categories": [
+        "Office",
+        "Productivity",
+        "Lilith"
+      ],
+      "popularity": 0.65
+    },
+    {
+      "package_id": "flatpak:dev.qwery.AddWater",
+      "source_ids": [
+        "dev.qwery.AddWater",
+        "addwater"
+      ],
+      "logical_id": "addwater",
+      "name": "Add Water",
+      "summary": "Hydration reminder and water intake tracker",
+      "categories": [
+        "Utility",
+        "Lifestyle",
+        "Lilith"
+      ],
+      "popularity": 0.6
+    },
+    {
+      "package_id": "flatpak:com.github.joseexposito.touche",
+      "source_ids": [
+        "com.github.joseexposito.touche",
+        "touche"
+      ],
+      "logical_id": "touche",
+      "name": "Touche",
+      "summary": "Customize touchpad gestures on Linux",
+      "categories": [
+        "Settings",
+        "Utility",
+        "Lilith"
+      ],
+      "popularity": 0.7
+    },
+    {
+      "package_id": "flatpak:io.github.sitraorg.sitra",
+      "source_ids": [
+        "io.github.sitraorg.sitra",
+        "sitra"
+      ],
+      "logical_id": "sitra",
+      "name": "Sitra",
+      "summary": "System information and resource viewer",
+      "categories": [
+        "System",
+        "Utility",
+        "Lilith"
+      ],
+      "popularity": 0.62
+    },
+    {
+      "package_id": "flatpak:com.github.appadeia.Taigo",
+      "source_ids": [
+        "com.github.appadeia.Taigo",
+        "taigo"
+      ],
+      "logical_id": "taigo",
+      "name": "Taigo",
+      "summary": "Rhythm game client for Linux",
+      "categories": [
+        "Game",
+        "Entertainment",
+        "Lilith"
+      ],
+      "popularity": 0.58
     }
   ]
 }
