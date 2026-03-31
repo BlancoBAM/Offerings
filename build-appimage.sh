@@ -43,7 +43,7 @@ GenericName=App Store
 Comment=Unified package manager for Flatpak, Snap, AppImage and more
 Exec=offerings %U
 Icon=offerings
-Categories=System;PackageManager;Utility;
+Categories=Utility;PackageManager;
 Keywords=store;install;packages;flatpak;snap;appimage;
 Terminal=false
 StartupNotify=true
@@ -59,8 +59,7 @@ GenericName=App Store
 Comment=Unified package manager for Flatpak, Snap, AppImage and more
 Exec=offerings %U
 Icon=offerings
-Categories=System;PackageManager;Utility;
-Keywords=store;install;packages;flatpak;snap;appimage;
+Categories=Utility;PackageManager;
 Terminal=false
 StartupNotify=true
 EOF
@@ -87,7 +86,7 @@ cp "$BUILD_DIR/AppDir/usr/share/icons/hicolor/scalable/apps/offerings.svg" "$BUI
 cat > "$BUILD_DIR/AppDir/usr/share/metainfo/offerings.appdata.xml" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>offerings</id>
+  <id>com.lilithlinux.Offerings</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>MIT</project_license>
   <name>Offerings</name>
@@ -108,13 +107,11 @@ cat > "$BUILD_DIR/AppDir/usr/share/metainfo/offerings.appdata.xml" << EOF
     </ul>
   </description>
   <launchable type="desktop-id">offerings.desktop</launchable>
-  <screenshots>
-    <screenshot type="default">
-      <caption>Main interface showing package categories</caption>
-    </screenshot>
-  </screenshots>
   <url type="homepage">https://github.com/BlancoBAM/Offerings</url>
   <url type="bugtracker">https://github.com/BlancoBAM/Offerings/issues</url>
+  <developer id="com.lilithlinux">
+    <name>Lilith Linux</name>
+  </developer>
   <releases>
     <release version="$VERSION" date="$(date -I)"/>
   </releases>
@@ -141,7 +138,7 @@ chmod +x "$BUILD_DIR/linuxdeploy.AppImage"
 # Build AppImage
 echo "Building AppImage..."
 cd "$BUILD_DIR"
-VERSION="$VERSION" ./linuxdeploy.AppImage \
+LINUXDEPLOY_OUTPUT_VERSION="$VERSION" ./linuxdeploy.AppImage \
     --appdir AppDir \
     --output appimage \
     --desktop-file=AppDir/usr/share/applications/offerings.desktop \
