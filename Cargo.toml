@@ -1,10 +1,13 @@
 [package]
 name = "offerings"
-version = "1.0.0-beta"
+version = "1.0.1-beta"
 edition = "2021"
 description = "A unified GUI interface for easy desktop app management designed for Lilith Linux"
 authors = ["BlancoBAM"]
 license = "MIT"
+repository = "https://github.com/BlancoBAM/Offerings"
+homepage = "https://github.com/BlancoBAM/Offerings"
+documentation = "https://github.com/BlancoBAM/Offerings/tree/main/docs"
 
 [dependencies]
 # UI Framework - Use 1.9.x with femtovg renderer for better compatibility

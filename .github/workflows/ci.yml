@@ -133,6 +133,7 @@ jobs:
             target/generate-rpm/*.rpm
             dist/offerings-x86_64.tar.gz
           retention-days: 7
+          if-no-files-found: error
 
   # Create GitHub Release
   release:
@@ -149,6 +150,12 @@ jobs:
         with:
           name: offerings-packages
           path: ./artifacts/
+      
+      - name: Flatten artifacts
+        run: |
+          mkdir -p artifacts-flat
+          find artifacts -type f -exec cp {} artifacts-flat/ \;
+          mv artifacts-flat/* artifacts/ 2>/dev/null || true
       
       - name: Create checksums
         run: |
