@@ -29,21 +29,33 @@ sudo cp offerings.desktop /usr/share/applications/
 sudo cp assets/icon-logo.png /usr/share/icons/hicolor/512x512/apps/offerings.png
 ```
 
-### 3. AppImage Distribution
+### 3. AppImage, DEB, and RPM Distribution
+
+Automated via GitHub Actions, or manually:
 
 ```bash
 # Build AppImage
-./build-appimage.sh v1.0.0
+./build-appimage.sh v0.1.0
 
-# Output: dist/Offerings-1.0.0-x86_64.AppImage
+# Build DEB (requires cargo-deb)
+cargo deb
+
+# Build RPM (requires cargo-generate-rpm)
+cargo generate-rpm
+
+# Output:
+# - dist/Offerings-0.1.0-x86_64.AppImage
+# - target/debian/*.deb
+# - target/generate-rpm/*.rpm
 ```
 
 ### 4. GitHub Releases (Automated via CI/CD)
 
 When you push a tag starting with `v`:
 - CI builds the release binary
-- CI builds the AppImage
+- CI builds the AppImage, DEB, and RPM packages
 - CI creates a GitHub Release with artifacts
+- CI publishes to crates.io
 - Checksums are automatically generated
 
 ## CI/CD Pipeline

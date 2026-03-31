@@ -54,4 +54,3 @@ Before packaging an AppImage or tagging a release, verify:
 
 - `--refresh`, `--export-catalog`, `--import-catalog`, `--refresh-catalog`, and `--self-test` are all headless-safe CLI modes.
 - Headless commands intentionally skip Slint window creation so they can be used in CI and packaging scripts.
-- For current runtime status, remaining verified defects, and next recommended repair steps, see `docs/HANDOFF-2026-03-29.md`.
