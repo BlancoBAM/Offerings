@@ -112,7 +112,7 @@ jobs:
         run: cargo deb --no-build
       
       - name: Build RPM
-        run: cargo generate-rpm --no-build
+        run: cargo generate-rpm
       
       - name: Prepare Arch binary
         run: |
