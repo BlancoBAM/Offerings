@@ -83,7 +83,7 @@ EOF
 cp "$BUILD_DIR/AppDir/usr/share/icons/hicolor/scalable/apps/offerings.svg" "$BUILD_DIR/AppDir/offerings.svg"
 
 # Create AppStream metadata
-cat > "$BUILD_DIR/AppDir/usr/share/metainfo/offerings.appdata.xml" << EOF
+cat > "$BUILD_DIR/AppDir/usr/share/metainfo/com.lilithlinux.Offerings.metainfo.xml" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
   <id>com.lilithlinux.Offerings</id>
