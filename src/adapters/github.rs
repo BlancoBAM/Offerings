@@ -414,9 +414,9 @@ impl PackageAdapter for GitHubReleaseAdapter {
             let status = tokio::process::Command::new("unzip")
                 .args([
                     "-o",
-                    &tmp_file.to_string_lossy().to_string(),
+                    tmp_file.to_string_lossy().as_ref(),
                     "-d",
-                    &tmp_dir.to_string_lossy().to_string(),
+                    tmp_dir.to_string_lossy().as_ref(),
                 ])
                 .status()
                 .await?;

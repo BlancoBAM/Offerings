@@ -153,7 +153,6 @@ impl SnapAdapter {
                 is_installed = true;
                 version = line
                     .trim_start_matches("installed:")
-                    .trim()
                     .split_whitespace()
                     .next()
                     .unwrap_or("")

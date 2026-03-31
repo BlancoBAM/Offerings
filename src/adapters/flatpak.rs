@@ -72,7 +72,7 @@ impl FlatpakAdapter {
                 id: format!("flatpak:{}", app_id),
                 name: flathub_app
                     .name
-                    .unwrap_or_else(|| app_id.split('.').last().unwrap_or(app_id).to_string()),
+                    .unwrap_or_else(|| app_id.split('.').next_back().unwrap_or(app_id).to_string()),
                 source: PackageSource::Flatpak,
             },
             metadata: PackageMetadata {
@@ -185,7 +185,7 @@ impl FlatpakAdapter {
 
                 // Try to extract a human-readable name from app_id
                 let display_name = if name.is_empty() || name == app_id {
-                    app_id.split('.').last().unwrap_or(app_id)
+                    app_id.split('.').next_back().unwrap_or(app_id)
                 } else {
                     name
                 };
@@ -396,13 +396,13 @@ impl FlatpakAdapter {
 
         for line in output.lines() {
             let parts: Vec<&str> = line.split('\t').collect();
-            if parts.len() >= 1 {
+            if !parts.is_empty() {
                 let app_id = parts[0].trim();
                 let name = if parts.len() >= 2 && !parts[1].trim().is_empty() {
                     parts[1].trim()
                 } else {
                     // Fallback string manipulation if name is absent or broken
-                    app_id.split('.').last().unwrap_or(app_id)
+                    app_id.split('.').next_back().unwrap_or(app_id)
                 };
 
                 // Skip runtimes
@@ -542,7 +542,7 @@ impl PackageAdapter for FlatpakAdapter {
                 let name = if parts.len() >= 2 && !parts[1].trim().is_empty() {
                     parts[1].trim()
                 } else {
-                    app_id.split('.').last().unwrap_or(app_id)
+                    app_id.split('.').next_back().unwrap_or(app_id)
                 };
                 if !app_id.is_empty() {
                     packages.push(Package {

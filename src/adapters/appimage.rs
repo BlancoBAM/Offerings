@@ -8,7 +8,7 @@ use crate::model::{
 };
 use async_trait::async_trait;
 use std::error::Error;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tokio::fs;
 
 /// AppImage management adapter
@@ -43,7 +43,7 @@ impl AppImageAdapter {
             .trim_end_matches(".appimage");
 
         // Try to extract version
-        let parts: Vec<&str> = name.split(|c| c == '-' || c == '_').collect();
+        let parts: Vec<&str> = name.split(['-', '_']).collect();
 
         if parts.len() >= 2 {
             // Check if second part looks like a version
@@ -64,7 +64,7 @@ impl AppImageAdapter {
     /// Create desktop entry for an AppImage
     async fn create_desktop_entry(
         &self,
-        path: &PathBuf,
+        path: &Path,
         name: &str,
     ) -> Result<(), Box<dyn Error + Send + Sync>> {
         let desktop_dir = dirs::data_dir()
@@ -407,7 +407,7 @@ impl PackageAdapter for AppImageAdapter {
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let id = package_id.strip_prefix("appimage:").unwrap_or(package_id);
         // Try to find the binary name
-        let bin_name = id.split('/').last().unwrap_or(id);
+        let bin_name = id.split('/').next_back().unwrap_or(id);
         tokio::process::Command::new(bin_name).spawn()?;
         Ok(())
     }
@@ -599,7 +599,7 @@ impl PackageAdapter for AppImageAdapter {
                 },
                 metadata: PackageMetadata {
                     summary: format!("AppImage AM Package: {}", path_str),
-                    description: format!("Provided by AM package manager"),
+                    description: "Provided by AM package manager".to_string(),
                     icon_url: None,
                     screenshots: vec![],
                     documentation_url: None,

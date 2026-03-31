@@ -1,4 +1,5 @@
 // src/main.rs - Offerings Application Entry Point
+#![allow(dead_code)]
 mod adapters;
 mod backend;
 mod catalog;
@@ -164,7 +165,7 @@ fn package_to_slint_info(pkg: model::Package) -> PackageInfo {
         logical_id: pkg.logical_app_id.clone().unwrap_or_default().into(),
         icon: {
             let mut img = slint::Image::default();
-            let safe_id = pkg.identity.id.replace(':', "_").replace('/', "_");
+            let safe_id = pkg.identity.id.replace([':', '/'], "_");
             let path = std::env::temp_dir()
                 .join("offerings_icons")
                 .join(format!("{}.png", safe_id));
@@ -511,9 +512,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             Ok(b) => Arc::new(b),
             Err(e) => {
                 eprintln!("Failed to initialize backend: {}", e);
-                return Err::<Arc<BackendService>, Box<dyn std::error::Error + Send + Sync>>(
-                    e.into(),
-                );
+                return Err::<Arc<BackendService>, Box<dyn std::error::Error + Send + Sync>>(e);
             }
         };
         Ok(backend)
@@ -1307,7 +1306,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             let name = name.to_string();
             let url = url.to_string();
             tokio_handle.spawn(async move {
-                if let Ok(_) = backend.add_source(name, url).await {
+                if backend.add_source(name, url).await.is_ok() {
                     let sources = backend.get_sources();
                     let _ = slint::invoke_from_event_loop(move || {
                         if let Some(ui) = ui_weak.upgrade() {
@@ -1329,7 +1328,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             let backend = backend.clone();
             let url = url.to_string();
             tokio_handle.spawn(async move {
-                if let Ok(_) = backend.remove_source(url).await {
+                if backend.remove_source(url).await.is_ok() {
                     let sources = backend.get_sources();
                     let _ = slint::invoke_from_event_loop(move || {
                         if let Some(ui) = ui_weak.upgrade() {
@@ -2220,7 +2219,7 @@ fn create_desktop_entry(pkg: &model::Package) {
     let _ = std::fs::create_dir_all(&desktop_dir);
 
     // Sanitize ID for filename
-    let safe_id = pkg.identity.id.replace(':', "-").replace('/', "-");
+    let safe_id = pkg.identity.id.replace([':', '/'], "-");
     let file_name = format!("{}.desktop", safe_id);
     let file_path = std::path::Path::new(&desktop_dir).join(file_name);
 
@@ -2490,7 +2489,7 @@ fn spawn_list_icon_fetcher(
                 }
 
                 if let Some(url) = icon_url {
-                    let safe_id = pkg.identity.id.replace(':', "_").replace('/', "_");
+                    let safe_id = pkg.identity.id.replace([':', '/'], "_");
                     let path = temp_dir.join(format!("{}.png", safe_id));
                     if !path.exists() {
                         let client = client.clone();

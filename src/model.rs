@@ -222,21 +222,11 @@ impl PackageOperation {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct OperationResult {
     pub success: bool,
     pub message: String,
     pub updated_packages: Vec<String>,
-}
-
-impl Default for OperationResult {
-    fn default() -> Self {
-        Self {
-            success: false,
-            message: String::new(),
-            updated_packages: vec![],
-        }
-    }
 }
 
 // ==================== Extended Types for Production ====================

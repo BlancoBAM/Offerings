@@ -36,9 +36,7 @@ impl SoarAdapter {
             // Example: [○] 12to11#pkgforge-dev.12to11:soarpkgs | HEAD-510a27f | appimage - Tool for running...
 
             // Remove the [○] or [●] prefix
-            let line_without_status = line
-                .trim_start_matches(|c| c == '[' || c == '○' || c == '●' || c == ']')
-                .trim();
+            let line_without_status = line.trim_start_matches(['[', '○', '●', ']']).trim();
 
             // Split by " | " to get parts
             let parts: Vec<&str> = line_without_status.splitn(4, " | ").collect();

@@ -144,7 +144,7 @@ impl BackendService {
             .metadata
             .icon_url
             .as_ref()
-            .map_or(true, |url| url.trim().is_empty())
+            .is_none_or(|url| url.trim().is_empty())
         {
             base.metadata.icon_url = incoming.metadata.icon_url.clone();
         }
@@ -356,7 +356,7 @@ impl BackendService {
 
         // First, fetch all featured apps from home_content to ensure they're in cache
         let mut featured_ids: Vec<&String> = self.home_content.featured_apps.iter().collect();
-        for (_, apps) in &self.home_content.category_showcases {
+        for apps in self.home_content.category_showcases.values() {
             featured_ids.extend(apps.iter());
         }
         featured_ids.sort();
@@ -971,7 +971,7 @@ impl BackendService {
         cache
             .values()
             .filter(|p| {
-                p.logical_app_id.as_ref().map_or(false, |id| id == logical_id) ||
+                p.logical_app_id.as_ref().is_some_and(|id| id == logical_id) ||
                 // Fallback: if logical_id is just a cleaned name, match on identity
                 p.identity.name.to_lowercase().contains(logical_id)
             })
@@ -1003,7 +1003,7 @@ impl BackendService {
                 .metadata
                 .icon_url
                 .as_ref()
-                .map_or(true, |url| url.trim().is_empty())
+                .is_none_or(|url| url.trim().is_empty())
             {
                 if let Some(icon_url) = &entry.icon_url {
                     pkg.metadata.icon_url = Some(icon_url.clone());
@@ -1049,11 +1049,7 @@ impl BackendService {
 
             // Fallback icon (Flathub 128x128)
             if pkg.metadata.icon_url.is_none()
-                || pkg
-                    .metadata
-                    .icon_url
-                    .as_ref()
-                    .map_or(true, |u| u.is_empty())
+                || pkg.metadata.icon_url.as_ref().is_none_or(|u| u.is_empty())
             {
                 // Try common icon locations
                 pkg.metadata.icon_url = Some(format!(
@@ -1084,7 +1080,7 @@ impl BackendService {
                 .metadata
                 .homepage_url
                 .as_ref()
-                .map_or(true, |url| url.trim().is_empty())
+                .is_none_or(|url| url.trim().is_empty())
             {
                 pkg.metadata.homepage_url = Some(format!("https://flathub.org/apps/{}", app_id));
             }
@@ -1576,7 +1572,7 @@ impl BackendService {
                     // Check for updates after refresh
                     let updates = backend.check_all_updates().await;
                     if !updates.is_empty() {
-                        let _ = backend
+                        backend
                             .notifications
                             .notify_updates_available(updates.len());
                     }
