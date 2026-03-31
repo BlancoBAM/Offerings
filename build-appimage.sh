@@ -141,12 +141,11 @@ chmod +x "$BUILD_DIR/linuxdeploy.AppImage"
 # Build AppImage
 echo "Building AppImage..."
 cd "$BUILD_DIR"
-./linuxdeploy.AppImage \
+VERSION="$VERSION" ./linuxdeploy.AppImage \
     --appdir AppDir \
     --output appimage \
     --desktop-file=AppDir/usr/share/applications/offerings.desktop \
-    --icon-file=AppDir/usr/share/icons/hicolor/scalable/apps/offerings.svg \
-    --appimage-version="$VERSION"
+    --icon-file=AppDir/usr/share/icons/hicolor/scalable/apps/offerings.svg
 
 # Move output to dist directory
 mv Offerings-*.AppImage "$OUTPUT_DIR/Offerings-${VERSION}-${ARCH}.AppImage"
