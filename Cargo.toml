@@ -1,6 +1,6 @@
 [package]
 name = "offerings"
-version = "1.0.1-beta"
+version = "1.0.2-beta"
 edition = "2021"
 description = "A unified GUI interface for easy desktop app management designed for Lilith Linux"
 authors = ["BlancoBAM"]
