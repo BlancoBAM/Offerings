@@ -9,6 +9,13 @@
       "logical_id": "espansogui",
       "name": "Espanso GUI",
       "summary": "GUI for the cross-platform text expander",
+      "description": "Espanso GUI provides a graphical interface for Espanso, a powerful cross-platform text expander. Create and manage text snippets, templates, and shortcuts that automatically expand as you type. Speed up your workflow by replacing abbreviations with full phrases, code snippets, or formatted text across any application.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/io.unobserved.espansoGUI.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/io.unobserved.espansoGUI-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/io.unobserved.espansoGUI-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/io.unobserved.espansoGUI",
       "categories": [
         "Productivity",
         "Lilith"
@@ -24,6 +31,13 @@
       "logical_id": "lotti",
       "name": "Lotti",
       "summary": "Lightweight distraction-free writing app",
+      "description": "Lotti is a minimalist, distraction-free writing application designed for focused creative work. It strips away unnecessary UI elements so you can concentrate on your words. Perfect for drafting essays, stories, journal entries, or any long-form writing without the clutter of a full-featured word processor.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/com.matthiasn.lotti.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/com.matthiasn.lotti-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/com.matthiasn.lotti-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/com.matthiasn.lotti",
       "categories": [
         "Productivity",
         "Writing",
@@ -40,6 +54,13 @@
       "logical_id": "brief",
       "name": "Brief",
       "summary": "Minimal note-taking application",
+      "description": "Brief is a clean, minimal note-taking app that focuses on simplicity and speed. Quickly jot down thoughts, create to-do lists, and organize your thoughts without unnecessary complexity.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/io.github.shonebinu.Brief.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/io.github.shonebinu.Brief-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/io.github.shonebinu.Brief-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/io.github.shonebinu.Brief",
       "categories": [
         "Productivity",
         "Lilith"
@@ -55,6 +76,13 @@
       "logical_id": "wonderpen",
       "name": "WonderPen",
       "summary": "Distraction-free writing app for focused creativity",
+      "description": "WonderPen is a distraction-free writing environment built for authors, bloggers, and creative writers. It offers a clean, full-screen interface with minimal UI elements, markdown support, and export options.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/com.tominlab.wonderpen.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/com.tominlab.wonderpen-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/com.tominlab.wonderpen-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/com.tominlab.wonderpen",
       "categories": [
         "Productivity",
         "Writing",
@@ -71,6 +99,13 @@
       "logical_id": "tintero",
       "name": "Tintero",
       "summary": "Markdown editor with a clean, minimal interface",
+      "description": "Tintero is a modern Markdown editor with a clean, minimal interface designed for writers who prefer plain text. It features live preview, syntax highlighting, and seamless export to HTML and PDF.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/app.tintero.Tintero.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/app.tintero.Tintero-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/app.tintero.Tintero-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/app.tintero.Tintero",
       "categories": [
         "Productivity",
         "Writing",
@@ -87,6 +122,13 @@
       "logical_id": "sticky",
       "name": "Sticky Notes",
       "summary": "Simple sticky notes application for your desktop",
+      "description": "Sticky Notes brings the familiar post-it note experience to your Linux desktop. Create quick notes, pin them to your workspace, and organize them by color and position.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/com.vixalien.sticky.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/com.vixalien.sticky-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/com.vixalien.sticky-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/com.vixalien.sticky",
       "categories": [
         "Productivity",
         "Lilith"
@@ -102,6 +144,13 @@
       "logical_id": "planify",
       "name": "Planify",
       "summary": "Task management app with a beautiful UI",
+      "description": "Planify is a beautifully designed task management application that integrates with Todoist and local task lists. Organize your projects, set due dates, prioritize tasks, and track your progress with an intuitive interface.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/io.github.alainm23.planify.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/io.github.alainm23.planify-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/io.github.alainm23.planify-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/io.github.alainm23.planify",
       "categories": [
         "Productivity",
         "Lilith"
@@ -117,6 +166,13 @@
       "logical_id": "koodo-reader",
       "name": "Koodo Reader",
       "summary": "All-in-one ebook reader supporting many formats",
+      "description": "Koodo Reader is a versatile ebook reader that supports EPUB, PDF, MOBI, AZW3, CBZ, and many other formats. It features a clean reading interface with customizable fonts, themes, and reading modes.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/io.github.troyeguo.koodo-reader.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/io.github.troyeguo.koodo-reader-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/io.github.troyeguo.koodo-reader-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/io.github.troyeguo.koodo-reader",
       "categories": [
         "Productivity",
         "Reading",
@@ -133,6 +189,13 @@
       "logical_id": "remnote",
       "name": "RemNote",
       "summary": "Knowledge management and spaced repetition tool",
+      "description": "RemNote combines note-taking with spaced repetition flashcards to help you learn and retain information effectively. Create hierarchical notes, generate flashcards automatically, and review them using a scientifically-proven algorithm.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/com.remnote.RemNote.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/com.remnote.RemNote-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/com.remnote.RemNote-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/com.remnote.RemNote",
       "categories": [
         "Productivity",
         "Education",
@@ -149,6 +212,13 @@
       "logical_id": "oboete",
       "name": "Oboete",
       "summary": "Flashcard and spaced repetition learning app",
+      "description": "Oboete is a flashcard application built around spaced repetition principles to maximize learning retention. Create custom decks, import existing cards, and review them on a schedule optimized for your memory.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/dev.mariinkys.Oboete.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/dev.mariinkys.Oboete-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/dev.mariinkys.Oboete-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/dev.mariinkys.Oboete",
       "categories": [
         "Education",
         "Productivity",
@@ -165,6 +235,13 @@
       "logical_id": "memento",
       "name": "Memento",
       "summary": "Memory and note-taking application",
+      "description": "Memento is a personal knowledge management tool that helps you capture, organize, and retrieve information efficiently. Create interconnected notes, tag them for easy searching, and build a personal wiki of your knowledge.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/io.github.ans_ibrahim.Memento.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/io.github.ans_ibrahim.Memento-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/io.github.ans_ibrahim.Memento-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/io.github.ans_ibrahim.Memento",
       "categories": [
         "Productivity",
         "Lilith"
@@ -179,6 +256,10 @@
       "logical_id": "journal",
       "name": "Journal",
       "summary": "Simple journaling and diary application",
+      "description": "Journal is a straightforward diary and journaling application for Linux. Record your daily thoughts, track events, and maintain a personal log with date-stamped entries.",
+      "icon_url": "https://dashboard.snapcraft.io/site_media/appmedia/journal.png",
+      "screenshots": [],
+      "homepage_url": "https://snapcraft.io/journal",
       "categories": [
         "Productivity",
         "Writing",
@@ -190,11 +271,18 @@
       "package_id": "flatpak:io.github.quantum_mutnauq.fast_reader_gtk",
       "source_ids": [
         "io.github.quantum_mutnauq.fast_reader_gtk",
-        "fast-reader-gtk"
+        "fast_reader_gtk"
       ],
-      "logical_id": "fast-reader-gtk",
+      "logical_id": "fast_reader_gtk",
       "name": "Fast Reader GTK",
       "summary": "Speed reading tool with GTK interface",
+      "description": "Fast Reader GTK is a speed reading application that uses RSVP (Rapid Serial Visual Presentation) to help you read text faster. Paste articles, open documents, or load web content and read them word-by-word at adjustable speeds.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/io.github.quantum_mutnauq.fast_reader_gtk.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/io.github.quantum_mutnauq.fast_reader_gtk-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/io.github.quantum_mutnauq.fast_reader_gtk-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/io.github.quantum_mutnauq.fast_reader_gtk",
       "categories": [
         "Productivity",
         "Reading",
@@ -211,6 +299,13 @@
       "logical_id": "colormydesktop",
       "name": "Color My Desktop",
       "summary": "Customize your desktop color scheme",
+      "description": "Color My Desktop lets you easily change and customize your desktop color scheme across GTK and Qt applications. Preview themes before applying, switch between light and dark modes, and fine-tune individual color elements.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/io.github.schwarzen.colormydesktop.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/io.github.schwarzen.colormydesktop-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/io.github.schwarzen.colormydesktop-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/io.github.schwarzen.colormydesktop",
       "categories": [
         "Settings",
         "Lilith"
@@ -226,6 +321,13 @@
       "logical_id": "jdsystemmonitor",
       "name": "jd System Monitor",
       "summary": "System resource monitoring and process viewer",
+      "description": "jd System Monitor provides a detailed view of your system resource usage including CPU, memory, disk, and network activity. Monitor running processes, track performance over time, and identify resource-hungry applications.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/page.codeberg.JakobDev.jdSystemMonitor.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/page.codeberg.JakobDev.jdSystemMonitor-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/page.codeberg.JakobDev.jdSystemMonitor-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/page.codeberg.JakobDev.jdSystemMonitor",
       "categories": [
         "System",
         "Lilith"
@@ -241,6 +343,13 @@
       "logical_id": "saldo",
       "name": "Saldo",
       "summary": "Personal finance and budget tracker",
+      "description": "Saldo is a personal finance application for tracking income, expenses, and budgets. Categorize your transactions, set spending limits, and visualize your financial habits with charts and reports.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/org.tabos.saldo.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/org.tabos.saldo-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/org.tabos.saldo-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/org.tabos.saldo",
       "categories": [
         "Office",
         "Finance",
@@ -252,11 +361,18 @@
       "package_id": "flatpak:org.gnome.NetworkDisplays",
       "source_ids": [
         "org.gnome.NetworkDisplays",
-        "network-displays"
+        "networkdisplays"
       ],
-      "logical_id": "network-displays",
+      "logical_id": "networkdisplays",
       "name": "Network Displays",
       "summary": "Stream your display over the network (Miracast)",
+      "description": "Network Displays enables wireless screen sharing via Miracast and related protocols on Linux. Project your desktop to compatible TVs, monitors, and receivers without cables.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/org.gnome.NetworkDisplays.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/org.gnome.NetworkDisplays-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/org.gnome.NetworkDisplays-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/org.gnome.NetworkDisplays",
       "categories": [
         "System",
         "Network",
@@ -268,11 +384,18 @@
       "package_id": "flatpak:org.gnome.SimpleScan",
       "source_ids": [
         "org.gnome.SimpleScan",
-        "simple-scan"
+        "simplescan"
       ],
-      "logical_id": "simple-scan",
+      "logical_id": "simplescan",
       "name": "Document Scanner",
       "summary": "Simple document scanning application",
+      "description": "Document Scanner provides an easy way to scan documents and images from connected scanners. It features a straightforward interface for multi-page scanning, PDF export, and basic image adjustments. Part of the GNOME project.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/org.gnome.SimpleScan.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/org.gnome.SimpleScan-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/org.gnome.SimpleScan-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/org.gnome.SimpleScan",
       "categories": [
         "Office",
         "Lilith"
@@ -288,6 +411,13 @@
       "logical_id": "ksnip",
       "name": "Ksnip",
       "summary": "Cross-platform screenshot tool with annotation",
+      "description": "Ksnip is a feature-rich screenshot tool that captures, annotates, and organizes screenshots on Linux. Take region, window, or full-screen captures, then add arrows, text, blur effects, and highlights before saving or sharing.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/org.ksnip.ksnip.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/org.ksnip.ksnip-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/org.ksnip.ksnip-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/org.ksnip.ksnip",
       "categories": [
         "Graphics",
         "Utility",
@@ -304,6 +434,13 @@
       "logical_id": "boxes",
       "name": "GNOME Boxes",
       "summary": "Simple virtual machine manager",
+      "description": "GNOME Boxes makes it easy to create and manage virtual machines on Linux. Download operating systems, set up VMs with a few clicks, and connect to remote desktops.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/org.gnome.Boxes.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/org.gnome.Boxes-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/org.gnome.Boxes-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/org.gnome.Boxes",
       "categories": [
         "System",
         "Virtualization",
@@ -319,6 +456,11 @@
       "logical_id": "winapps",
       "name": "WinApps",
       "summary": "Run Windows apps seamlessly on Linux",
+      "description": "WinApps allows you to run Windows applications natively on your Linux desktop by integrating them through a lightweight RDP connection to a Windows VM. Windows apps appear alongside your Linux applications with proper file associations.",
+      "icon_url": "https://opengraph.githubassets.com/1/winapps-org/winapps.png",
+      "screenshots": [],
+      "homepage_url": "https://github.com/winapps-org/winapps",
+      "documentation_url": "https://github.com/winapps-org/winapps",
       "categories": [
         "System",
         "Virtualization",
@@ -334,6 +476,11 @@
       "logical_id": "nixite",
       "name": "Nixite",
       "summary": "Nix-based system configuration tool",
+      "description": "Nixite simplifies NixOS and Nix package manager configuration with a user-friendly interface. Manage your system configuration, install packages, and apply changes without writing Nix expressions by hand.",
+      "icon_url": "https://opengraph.githubassets.com/1/aspizu/nixite.png",
+      "screenshots": [],
+      "homepage_url": "https://github.com/aspizu/nixite",
+      "documentation_url": "https://github.com/aspizu/nixite",
       "categories": [
         "System",
         "Development",
@@ -349,6 +496,11 @@
       "logical_id": "homepage",
       "name": "Homepage",
       "summary": "Modern, secure, and highly customizable application dashboard",
+      "description": "Homepage is a beautifully designed, self-hosted dashboard for organizing your services, bookmarks, and system information. Display widgets for weather, Docker containers, server stats, and more.",
+      "icon_url": "https://opengraph.githubassets.com/1/gethomepage/homepage.png",
+      "screenshots": [],
+      "homepage_url": "https://github.com/gethomepage/homepage",
+      "documentation_url": "https://github.com/gethomepage/homepage",
       "categories": [
         "Network",
         "Utility",
@@ -365,6 +517,14 @@
       "logical_id": "digikam",
       "name": "digiKam",
       "summary": "Professional photo management and editing",
+      "description": "digiKam is a professional-grade photo management application with powerful editing tools. Organize thousands of photos with tags, ratings, and facial recognition. Edit images with non-destructive adjustments and batch process large collections.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/org.kde.digikam.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/org.kde.digikam-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/org.kde.digikam-stable/1248x702/2.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/org.kde.digikam-stable/1248x702/3.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/org.kde.digikam",
       "categories": [
         "Graphics",
         "Photography",
@@ -381,6 +541,13 @@
       "logical_id": "fontforge",
       "name": "FontForge",
       "summary": "Free, open-source font editor",
+      "description": "FontForge is a comprehensive, open-source font editor for creating and modifying typefaces. Design glyphs, adjust kerning, convert between font formats, and create complete font families from scratch.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/org.fontforge.FontForge.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/org.fontforge.FontForge-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/org.fontforge.FontForge-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/org.fontforge.FontForge",
       "categories": [
         "Graphics",
         "Development",
@@ -392,11 +559,18 @@
       "package_id": "flatpak:io.github.qcanvas.QCanvasApp",
       "source_ids": [
         "io.github.qcanvas.QCanvasApp",
-        "qcanvas"
+        "qcanvasapp"
       ],
-      "logical_id": "qcanvas",
+      "logical_id": "qcanvasapp",
       "name": "QCanvas",
       "summary": "Drawing and canvas application",
+      "description": "QCanvas is a drawing application built with Qt that provides a canvas for digital art, diagrams, and illustrations. It offers basic drawing tools, shape creation, and layer management.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/io.github.qcanvas.QCanvasApp.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/io.github.qcanvas.QCanvasApp-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/io.github.qcanvas.QCanvasApp-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/io.github.qcanvas.QCanvasApp",
       "categories": [
         "Graphics",
         "Lilith"
@@ -412,6 +586,13 @@
       "logical_id": "themegenerator",
       "name": "Theme Generator",
       "summary": "Generate and customize GTK themes",
+      "description": "Theme Generator creates custom GTK themes from a base color scheme, allowing you to personalize your desktop appearance. Choose accent colors, generate light and dark variants, and apply themes system-wide.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/io.github.thiefmd.themegenerator.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/io.github.thiefmd.themegenerator-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/io.github.thiefmd.themegenerator-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/io.github.thiefmd.themegenerator",
       "categories": [
         "Settings",
         "Graphics",
@@ -428,6 +609,13 @@
       "logical_id": "wallpaperdownloader",
       "name": "Wallpaper Downloader",
       "summary": "Download and manage desktop wallpapers",
+      "description": "Wallpaper Downloader fetches high-quality wallpapers from multiple online sources and manages them on your system. Set automatic rotation, filter by resolution and category, and organize your wallpaper collection.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/es.estoes.wallpaperDownloader.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/es.estoes.wallpaperDownloader-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/es.estoes.wallpaperDownloader-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/es.estoes.wallpaperDownloader",
       "categories": [
         "Settings",
         "Lilith"
@@ -438,11 +626,18 @@
       "package_id": "flatpak:com.github.maoschanz.DynamicWallpaperEditor",
       "source_ids": [
         "com.github.maoschanz.DynamicWallpaperEditor",
-        "dynamic-wallpaper-editor"
+        "dynamicwallpapereditor"
       ],
-      "logical_id": "dynamic-wallpaper-editor",
+      "logical_id": "dynamicwallpapereditor",
       "name": "Dynamic Wallpaper Editor",
       "summary": "Create and edit dynamic wallpapers for GNOME",
+      "description": "Dynamic Wallpaper Editor lets you create animated, time-based wallpapers that change throughout the day. Combine multiple images into a single wallpaper XML file with transition effects.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/com.github.maoschanz.DynamicWallpaperEditor.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/com.github.maoschanz.DynamicWallpaperEditor-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/com.github.maoschanz.DynamicWallpaperEditor-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/com.github.maoschanz.DynamicWallpaperEditor",
       "categories": [
         "Settings",
         "Lilith"
@@ -458,6 +653,13 @@
       "logical_id": "wonderwall",
       "name": "Wonderwall",
       "summary": "Beautiful wallpaper manager",
+      "description": "Wonderwall is a modern wallpaper manager that sources images from Unsplash, Pexels, Pixabay, and other platforms. Set wallpapers on a schedule, filter by tags and colors, and enjoy a fresh desktop background every day.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/com.ktechpit.wonderwall.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/com.ktechpit.wonderwall-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/com.ktechpit.wonderwall-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/com.ktechpit.wonderwall",
       "categories": [
         "Settings",
         "Lilith"
@@ -473,6 +675,13 @@
       "logical_id": "colorwall",
       "name": "ColorWall",
       "summary": "Dynamic color-based wallpaper generator",
+      "description": "ColorWall generates beautiful gradient wallpapers from color palettes. Choose your colors, adjust the gradient style, and set it as your desktop background.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/com.ktechpit.colorwall.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/com.ktechpit.colorwall-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/com.ktechpit.colorwall-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/com.ktechpit.colorwall",
       "categories": [
         "Settings",
         "Lilith"
@@ -488,6 +697,13 @@
       "logical_id": "wardrobe",
       "name": "Wardrobe",
       "summary": "Theme and appearance manager for Linux",
+      "description": "Wardrobe is a comprehensive theme manager for Linux desktops that handles GTK themes, icon packs, cursors, and shell extensions. Browse, download, and apply themes from a unified interface.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/io.github.swordpuffin.wardrobe.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/io.github.swordpuffin.wardrobe-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/io.github.swordpuffin.wardrobe-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/io.github.swordpuffin.wardrobe",
       "categories": [
         "Settings",
         "Lilith"
@@ -503,6 +719,13 @@
       "logical_id": "linuxthemestore",
       "name": "Linux Theme Store",
       "summary": "Browse and install Linux themes and icons",
+      "description": "Linux Theme Store provides a curated marketplace for GTK themes, icon packs, cursor themes, and desktop wallpapers. Browse community-contributed themes, preview them before installing.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/io.github.debasish_patra_1987.linuxthemestore.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/io.github.debasish_patra_1987.linuxthemestore-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/io.github.debasish_patra_1987.linuxthemestore-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/io.github.debasish_patra_1987.linuxthemestore",
       "categories": [
         "Settings",
         "Lilith"
@@ -512,11 +735,16 @@
     {
       "package_id": "appimage:pling-store",
       "source_ids": [
-        "pling-store"
+        "pling-store",
+        "pling store"
       ],
       "logical_id": "pling-store",
       "name": "Pling Store",
       "summary": "Browse and install content from the OpenDesktop network",
+      "description": "Pling Store is the desktop client for the OpenDesktop.org network, providing access to thousands of themes, icons, wallpapers, and other desktop customizations. Browse categories, read reviews, and install content directly to your system.",
+      "icon_url": "https://www.pling.com/img/logo.png",
+      "screenshots": [],
+      "homepage_url": "https://www.pling.com/",
       "categories": [
         "Settings",
         "Graphics",
@@ -533,6 +761,13 @@
       "logical_id": "warp",
       "name": "Warp",
       "summary": "Blazingly fast, Rust-based terminal emulator",
+      "description": "Warp is a modern terminal emulator built with Rust for speed and reliability. It features AI-assisted command suggestions, block-based output rendering, and a text editor-like input experience.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/app.drey.Warp.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/app.drey.Warp-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/app.drey.Warp-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/app.drey.Warp",
       "categories": [
         "System",
         "Development",
@@ -549,6 +784,13 @@
       "logical_id": "wezterm",
       "name": "WezTerm",
       "summary": "GPU-accelerated terminal emulator with multiplexing",
+      "description": "WezTerm is a powerful, GPU-accelerated terminal emulator and multiplexer written in Rust. It supports tabs, splits, ligatures, true color, and extensive configuration via Lua.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/org.wezfurlong.wezterm.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/org.wezfurlong.wezterm-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/org.wezfurlong.wezterm-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/org.wezfurlong.wezterm",
       "categories": [
         "System",
         "Development",
@@ -560,11 +802,18 @@
       "package_id": "flatpak:com.sublimehq.SublimeText",
       "source_ids": [
         "com.sublimehq.SublimeText",
-        "sublime-text"
+        "sublimetext"
       ],
-      "logical_id": "sublime-text",
+      "logical_id": "sublimetext",
       "name": "Sublime Text",
       "summary": "Sophisticated text editor for code and markup",
+      "description": "Sublime Text is a fast, polished text editor beloved by developers for its speed, multiple cursors, command palette, and extensive plugin ecosystem. It handles large files effortlessly and supports dozens of programming languages.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/com.sublimehq.SublimeText.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/com.sublimehq.SublimeText-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/com.sublimehq.SublimeText-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/com.sublimehq.SublimeText",
       "categories": [
         "Development",
         "Lilith"
@@ -574,11 +823,16 @@
     {
       "package_id": "appimage:warp",
       "source_ids": [
+        "warp",
         "warp"
       ],
-      "logical_id": "warp-appimage",
-      "name": "Warp (AppImage)",
+      "logical_id": "warp",
+      "name": "Warp",
       "summary": "Blazingly fast terminal emulator (AppImage)",
+      "description": "Warp is a modern terminal emulator built with Rust for speed and reliability. This AppImage version provides a portable installation that works across Linux distributions without system dependencies.",
+      "icon_url": "https://appimage.github.io/icons/warp.png",
+      "screenshots": [],
+      "homepage_url": "https://www.warp.dev/",
       "categories": [
         "System",
         "Development",
@@ -589,11 +843,16 @@
     {
       "package_id": "appimage:hyper",
       "source_ids": [
+        "hyper",
         "hyper"
       ],
       "logical_id": "hyper",
       "name": "Hyper",
       "summary": "Extensible terminal built on web technologies",
+      "description": "Hyper is a beautiful, extensible terminal emulator built on HTML/CSS/JS. Customize every aspect with plugins and themes, and enjoy a consistent experience across platforms.",
+      "icon_url": "https://appimage.github.io/icons/hyper.png",
+      "screenshots": [],
+      "homepage_url": "https://hyper.is/",
       "categories": [
         "System",
         "Development",
@@ -609,6 +868,11 @@
       "logical_id": "waveterm",
       "name": "Wave Terminal",
       "summary": "Open-source terminal for the AI era with inline content",
+      "description": "Wave Terminal reimagines the terminal for the modern era with inline content rendering, AI integration, and a workspace-based interface. Run commands, view outputs, embed images and files, and collaborate with AI assistants.",
+      "icon_url": "https://opengraph.githubassets.com/1/wavetermdev/waveterm.png",
+      "screenshots": [],
+      "homepage_url": "https://github.com/wavetermdev/waveterm",
+      "documentation_url": "https://github.com/wavetermdev/waveterm",
       "categories": [
         "System",
         "Development",
@@ -624,6 +888,11 @@
       "logical_id": "kit",
       "name": "Kit",
       "summary": "Scriptable automation toolkit for developers",
+      "description": "Kit is a scriptable automation toolkit that lets you create desktop scripts, automate workflows, and build custom tools using JavaScript. Write scripts that interact with your OS, clipboard, files, and applications.",
+      "icon_url": "https://opengraph.githubassets.com/1/johnlindquist/kit.png",
+      "screenshots": [],
+      "homepage_url": "https://github.com/johnlindquist/kit",
+      "documentation_url": "https://github.com/johnlindquist/kit",
       "categories": [
         "Development",
         "Utility",
@@ -639,6 +908,11 @@
       "logical_id": "linuxtoys",
       "name": "Linux Toys",
       "summary": "Collection of useful Linux utilities and scripts",
+      "description": "Linux Toys is a curated collection of handy Linux utilities, scripts, and tools for everyday desktop use. From system tweaks to productivity helpers, this project gathers useful small tools that make Linux more convenient.",
+      "icon_url": "https://opengraph.githubassets.com/1/psygreg/linuxtoys.png",
+      "screenshots": [],
+      "homepage_url": "https://github.com/psygreg/linuxtoys",
+      "documentation_url": "https://github.com/psygreg/linuxtoys",
       "categories": [
         "Utility",
         "Development",
@@ -655,6 +929,13 @@
       "logical_id": "zoom",
       "name": "Zoom",
       "summary": "Video conferencing and online meetings",
+      "description": "Zoom is a widely-used video conferencing platform for meetings, webinars, and online collaboration. Share your screen, record sessions, use virtual backgrounds, and connect with colleagues or friends from anywhere.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/us.zoom.Zoom.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/us.zoom.Zoom-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/us.zoom.Zoom-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/us.zoom.Zoom",
       "categories": [
         "Network",
         "AudioVideo",
@@ -666,11 +947,18 @@
       "package_id": "flatpak:com.github.IsmaelMartinez.teams_for_linux",
       "source_ids": [
         "com.github.IsmaelMartinez.teams_for_linux",
-        "teams-for-linux"
+        "teams_for_linux"
       ],
-      "logical_id": "teams-for-linux",
+      "logical_id": "teams_for_linux",
       "name": "Teams for Linux",
       "summary": "Unofficial Microsoft Teams client for Linux",
+      "description": "Teams for Linux is an unofficial Microsoft Teams client that wraps the web application in a native desktop experience. Get notifications, system tray integration, and a dedicated window for Teams on Linux.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/com.github.IsmaelMartinez.teams_for_linux.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/com.github.IsmaelMartinez.teams_for_linux-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/com.github.IsmaelMartinez.teams_for_linux-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/com.github.IsmaelMartinez.teams_for_linux",
       "categories": [
         "Network",
         "AudioVideo",
@@ -682,11 +970,18 @@
       "package_id": "flatpak:me.proton.Mail",
       "source_ids": [
         "me.proton.Mail",
-        "proton-mail"
+        "mail"
       ],
-      "logical_id": "proton-mail",
+      "logical_id": "mail",
       "name": "Proton Mail",
       "summary": "Secure, encrypted email service",
+      "description": "Proton Mail is a privacy-focused email service with end-to-end encryption, zero-access architecture, and open-source clients. The desktop app provides a native experience for managing your encrypted email and organizing your inbox.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/me.proton.Mail.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/me.proton.Mail-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/me.proton.Mail-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/me.proton.Mail",
       "categories": [
         "Network",
         "Office",
@@ -698,11 +993,18 @@
       "package_id": "flatpak:me.proton.Pass",
       "source_ids": [
         "me.proton.Pass",
-        "proton-pass"
+        "pass"
       ],
-      "logical_id": "proton-pass",
+      "logical_id": "pass",
       "name": "Proton Pass",
       "summary": "Secure password manager from Proton",
+      "description": "Proton Pass is a secure password manager that stores and autofills your passwords, credit cards, and personal information. Built by the Proton team with the same privacy-first approach as Proton Mail.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/me.proton.Pass.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/me.proton.Pass-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/me.proton.Pass-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/me.proton.Pass",
       "categories": [
         "Security",
         "Utility",
@@ -719,6 +1021,13 @@
       "logical_id": "ferdium",
       "name": "Ferdium",
       "summary": "All-in-one messaging app combining Slack, WhatsApp, and more",
+      "description": "Ferdium combines all your messaging services into a single application with tabbed workspaces. Reduce window clutter, manage notifications centrally, and switch between services without losing focus. A fork of Franz with additional features and no paywalls.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/org.ferdium.Ferdium.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/org.ferdium.Ferdium-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/org.ferdium.Ferdium-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/org.ferdium.Ferdium",
       "categories": [
         "Network",
         "Lilith"
@@ -734,6 +1043,13 @@
       "logical_id": "mingle",
       "name": "Mingle",
       "summary": "Unified messaging and communication hub",
+      "description": "Mingle is a unified messaging application that brings together multiple chat and communication platforms into one organized workspace. Manage conversations across different services without switching between apps.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/io.github.halfmexican.Mingle.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/io.github.halfmexican.Mingle-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/io.github.halfmexican.Mingle-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/io.github.halfmexican.Mingle",
       "categories": [
         "Network",
         "Lilith"
@@ -744,11 +1060,18 @@
       "package_id": "flatpak:app.zen_browser.zen",
       "source_ids": [
         "app.zen_browser.zen",
-        "zen-browser"
+        "zen"
       ],
-      "logical_id": "zen-browser",
+      "logical_id": "zen",
       "name": "Zen Browser",
       "summary": "Privacy-focused, beautifully designed web browser",
+      "description": "Zen Browser is a modern web browser built with privacy and aesthetics in mind. It features a clean, minimal interface with vertical tabs, built-in ad blocking, and strong privacy protections. Based on Firefox engine.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/app.zen_browser.zen.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/app.zen_browser.zen-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/app.zen_browser.zen-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/app.zen_browser.zen",
       "categories": [
         "Network",
         "Browser",
@@ -759,11 +1082,16 @@
     {
       "package_id": "appimage:browseros",
       "source_ids": [
+        "browseros",
         "browseros"
       ],
       "logical_id": "browseros",
       "name": "BrowserOS",
       "summary": "Browser-based operating system experience",
+      "description": "BrowserOS provides a lightweight, browser-centric desktop experience packaged as an AppImage. It transforms your Linux system into a focused web-browsing environment with kiosk-like simplicity.",
+      "icon_url": "https://appimage.github.io/icons/browseros.png",
+      "screenshots": [],
+      "homepage_url": "https://browseros.com/",
       "categories": [
         "Network",
         "Browser",
@@ -780,6 +1108,13 @@
       "logical_id": "tarotcaster",
       "name": "Tarot Caster",
       "summary": "Tarot card reading and divination tool",
+      "description": "Tarot Caster provides an interactive tarot card reading experience with traditional card meanings and interpretations. Draw cards, explore their symbolism, and gain insights through classic tarot spreads.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/io.github.alamahant.TarotCaster.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/io.github.alamahant.TarotCaster-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/io.github.alamahant.TarotCaster-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/io.github.alamahant.TarotCaster",
       "categories": [
         "Entertainment",
         "Lilith"
@@ -795,6 +1130,13 @@
       "logical_id": "tarotcanvas",
       "name": "Tarot Canvas",
       "summary": "Interactive tarot reading experience",
+      "description": "Tarot Canvas offers a visually rich tarot reading experience with beautiful card artwork and intuitive spread layouts. Explore card meanings, create custom readings, and save your sessions for reflection.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/land.arcana.TarotCanvas.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/land.arcana.TarotCanvas-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/land.arcana.TarotCanvas-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/land.arcana.TarotCanvas",
       "categories": [
         "Entertainment",
         "Lilith"
@@ -810,6 +1152,13 @@
       "logical_id": "asteria",
       "name": "Asteria",
       "summary": "Astrology and star chart application",
+      "description": "Asteria is an astrology application that generates natal charts, transits, and synastry readings. Input birth details to create detailed astrological profiles with planetary positions, aspects, and house placements.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/io.github.alamahant.Asteria.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/io.github.alamahant.Asteria-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/io.github.alamahant.Asteria-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/io.github.alamahant.Asteria",
       "categories": [
         "Entertainment",
         "Education",
@@ -826,6 +1175,13 @@
       "logical_id": "astrogods",
       "name": "AstroGods",
       "summary": "Mythology and astrology reference",
+      "description": "AstroGods combines mythology and astrology into an interactive reference application. Explore the connections between celestial bodies, mythological figures, and astrological meanings.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/it.astrogods.AstroGods.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/it.astrogods.AstroGods-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/it.astrogods.AstroGods-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/it.astrogods.AstroGods",
       "categories": [
         "Entertainment",
         "Education",
@@ -842,6 +1198,14 @@
       "logical_id": "stellarium",
       "name": "Stellarium",
       "summary": "Realistic 3D planetarium and sky simulator",
+      "description": "Stellarium is a free, open-source planetarium that renders a realistic 3D sky in real time. Explore stars, constellations, planets, nebulae, and galaxies from any location on Earth or in the solar system.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/org.stellarium.Stellarium.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/org.stellarium.Stellarium-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/org.stellarium.Stellarium-stable/1248x702/2.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/org.stellarium.Stellarium-stable/1248x702/3.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/org.stellarium.Stellarium",
       "categories": [
         "Education",
         "Science",
@@ -858,6 +1222,13 @@
       "logical_id": "blanket",
       "name": "Blanket",
       "summary": "Listen to ambient sounds for focus and relaxation",
+      "description": "Blanket plays ambient background sounds to help you focus, relax, or sleep. Mix rain, wind, cafe noise, fire crackling, and other soundscapes to create your perfect audio environment.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/com.rafaelmardojai.Blanket.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/com.rafaelmardojai.Blanket-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/com.rafaelmardojai.Blanket-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/com.rafaelmardojai.Blanket",
       "categories": [
         "Audio",
         "Lilith"
@@ -873,6 +1244,13 @@
       "logical_id": "anki",
       "name": "Anki",
       "summary": "Powerful spaced repetition flashcard program",
+      "description": "Anki is the gold standard for spaced repetition flashcard learning. Create custom decks, download shared materials, and review cards on a schedule optimized by a proven algorithm. Supports rich text, images, audio, video, and LaTeX.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/net.ankiweb.Anki.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/net.ankiweb.Anki-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/net.ankiweb.Anki-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/net.ankiweb.Anki",
       "categories": [
         "Education",
         "Productivity",
@@ -889,6 +1267,13 @@
       "logical_id": "spmp",
       "name": "SpMp",
       "summary": "Spotify-compatible music player client",
+      "description": "SpMp is a lightweight Spotify-compatible music player client for Linux. Stream music, manage playlists, and control playback with a native desktop interface.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/dev.toastbits.spmp.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/dev.toastbits.spmp-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/dev.toastbits.spmp-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/dev.toastbits.spmp",
       "categories": [
         "Audio",
         "Lilith"
@@ -899,11 +1284,18 @@
       "package_id": "flatpak:com.wps.Office",
       "source_ids": [
         "com.wps.Office",
-        "wps-office"
+        "office"
       ],
-      "logical_id": "wps-office",
+      "logical_id": "office",
       "name": "WPS Office",
       "summary": "Full office suite with word processor, spreadsheets, and presentations",
+      "description": "WPS Office is a comprehensive office suite compatible with Microsoft Office formats. It includes Writer, Spreadsheets, and Presentation with a familiar ribbon interface. Excellent compatibility with .docx, .xlsx, and .pptx files.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/com.wps.Office.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/com.wps.Office-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/com.wps.Office-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/com.wps.Office",
       "categories": [
         "Office",
         "Lilith"
@@ -919,6 +1311,13 @@
       "logical_id": "catalyst",
       "name": "Catalyst",
       "summary": "Productivity and workflow management tool",
+      "description": "Catalyst is a productivity application designed to streamline your daily workflow. Organize tasks, track habits, manage projects, and set goals all in one place.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/net.bontal.Catalyst.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/net.bontal.Catalyst-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/net.bontal.Catalyst-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/net.bontal.Catalyst",
       "categories": [
         "Productivity",
         "Office",
@@ -935,6 +1334,13 @@
       "logical_id": "agenda",
       "name": "Agenda",
       "summary": "Simple calendar and scheduling application",
+      "description": "Agenda is a lightweight calendar and scheduling application for managing your appointments and events. View your schedule in day, week, or month layouts, create recurring events, and set reminders.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/com.github.dahenson.agenda.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/com.github.dahenson.agenda-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/com.github.dahenson.agenda-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/com.github.dahenson.agenda",
       "categories": [
         "Office",
         "Productivity",
@@ -951,6 +1357,13 @@
       "logical_id": "addwater",
       "name": "Add Water",
       "summary": "Hydration reminder and water intake tracker",
+      "description": "Add Water is a simple hydration reminder that prompts you to drink water throughout the day. Track your daily water intake, set personalized goals, and receive gentle notifications to stay hydrated.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/dev.qwery.AddWater.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/dev.qwery.AddWater-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/dev.qwery.AddWater-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/dev.qwery.AddWater",
       "categories": [
         "Utility",
         "Lifestyle",
@@ -967,6 +1380,13 @@
       "logical_id": "touche",
       "name": "Touche",
       "summary": "Customize touchpad gestures on Linux",
+      "description": "Touche lets you customize multi-touch gestures on your Linux touchpad. Define custom actions for swipes, pinches, and taps to navigate your desktop more efficiently.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/com.github.joseexposito.touche.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/com.github.joseexposito.touche-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/com.github.joseexposito.touche-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/com.github.joseexposito.touche",
       "categories": [
         "Settings",
         "Utility",
@@ -983,6 +1403,13 @@
       "logical_id": "sitra",
       "name": "Sitra",
       "summary": "System information and resource viewer",
+      "description": "Sitra provides a comprehensive overview of your systems hardware and software configuration. View CPU, memory, storage, and network details in a clean, organized interface.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/io.github.sitraorg.sitra.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/io.github.sitraorg.sitra-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/io.github.sitraorg.sitra-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/io.github.sitraorg.sitra",
       "categories": [
         "System",
         "Utility",
@@ -999,12 +1426,1115 @@
       "logical_id": "taigo",
       "name": "Taigo",
       "summary": "Rhythm game client for Linux",
+      "description": "Taigo is a rhythm game client that lets you play popular rhythm game song charts on Linux. Import song packs, customize key bindings, and enjoy precise timing judgment.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/com.github.appadeia.Taigo.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/com.github.appadeia.Taigo-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/com.github.appadeia.Taigo-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/com.github.appadeia.Taigo",
       "categories": [
         "Game",
         "Entertainment",
         "Lilith"
       ],
       "popularity": 0.58
+    },
+    {
+      "package_id": "flatpak:org.mozilla.firefox",
+      "source_ids": [
+        "org.mozilla.firefox",
+        "firefox"
+      ],
+      "logical_id": "firefox",
+      "name": "Firefox",
+      "summary": "Fast, privacy-aware web browser",
+      "description": "Firefox is a full-featured web browser with tracking protection, syncing, extensions, and strong Linux desktop integration. It blocks third-party trackers by default, supports container tabs, and offers a vast library of add-ons.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/org.mozilla.firefox.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/org.mozilla.firefox-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/org.mozilla.firefox-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/org.mozilla.firefox",
+      "categories": [
+        "Network",
+        "Browser",
+        "Lilith"
+      ],
+      "popularity": 0.95
+    },
+    {
+      "package_id": "flatpak:org.gimp.GIMP",
+      "source_ids": [
+        "org.gimp.GIMP",
+        "gimp"
+      ],
+      "logical_id": "gimp",
+      "name": "GIMP",
+      "summary": "Advanced image editor",
+      "description": "GIMP is a professional raster graphics editor used for photo retouching, illustration, compositing, and asset production. It offers layers, masks, filters, custom brushes, and extensive plugin support.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/org.gimp.GIMP.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/org.gimp.GIMP-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/org.gimp.GIMP-stable/1248x702/2.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/org.gimp.GIMP-stable/1248x702/3.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/org.gimp.GIMP",
+      "categories": [
+        "Graphics",
+        "Lilith"
+      ],
+      "popularity": 0.82
+    },
+    {
+      "package_id": "flatpak:org.videolan.VLC",
+      "source_ids": [
+        "org.videolan.VLC",
+        "vlc"
+      ],
+      "logical_id": "vlc",
+      "name": "VLC",
+      "summary": "Versatile media player",
+      "description": "VLC plays local files, network streams, and discs with wide codec support and a lightweight desktop UI. It handles virtually every media format without requiring additional codec packs and supports hardware acceleration.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/org.videolan.VLC.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/org.videolan.VLC-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/org.videolan.VLC-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/org.videolan.VLC",
+      "categories": [
+        "Video",
+        "AudioVideo",
+        "Lilith"
+      ],
+      "popularity": 0.9
+    },
+    {
+      "package_id": "flatpak:com.spotify.Client",
+      "source_ids": [
+        "com.spotify.Client",
+        "client"
+      ],
+      "logical_id": "client",
+      "name": "Spotify",
+      "summary": "Digital music service",
+      "description": "Spotify gives you instant access to millions of songs, from old favorites to the latest hits. The Linux client provides native desktop integration with media keys, system tray controls, and notification support.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/com.spotify.Client.png",
+      "screenshots": [
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/com.spotify.Client-stable/1248x702/1.png",
+        "https://dl.flathub.org/repo/appstream/x86_64/screenshots/com.spotify.Client-stable/1248x702/2.png"
+      ],
+      "homepage_url": "https://flathub.org/apps/com.spotify.Client",
+      "categories": [
+        "Audio",
+        "Lilith"
+      ],
+      "popularity": 0.92
+    },
+    {
+      "package_id": "snap:code",
+      "source_ids": [
+        "code"
+      ],
+      "logical_id": "code",
+      "name": "Code",
+      "summary": "Code editing. Redefined.",
+      "description": "Visual Studio Code is a lightweight but powerful source code editor with built-in support for JavaScript, TypeScript, Node.js, and a rich ecosystem of extensions. Features IntelliSense, debugging, Git integration, and a built-in terminal.",
+      "icon_url": "https://dashboard.snapcraft.io/site_media/appmedia/code.png",
+      "screenshots": [
+        "https://dashboard.snapcraft.io/site_media/appmedia/code/screenshot_1.png",
+        "https://dashboard.snapcraft.io/site_media/appmedia/code/screenshot_2.png"
+      ],
+      "homepage_url": "https://snapcraft.io/code",
+      "categories": [
+        "Development",
+        "Lilith"
+      ],
+      "popularity": 0.98
+    },
+    {
+      "package_id": "appimage:obsidian",
+      "source_ids": [
+        "obsidian",
+        "obsidian"
+      ],
+      "logical_id": "obsidian",
+      "name": "Obsidian",
+      "summary": "Knowledge base and note-taking app",
+      "description": "Obsidian is a local-first Markdown knowledge base with backlinking, graph navigation, and plugin extensibility. Build a personal wiki of interconnected notes, visualize relationships between ideas, and extend functionality with plugins.",
+      "icon_url": "https://dl.flathub.org/repo/appstream/x86_64/icons/128x128/md.obsidian.Obsidian.png",
+      "screenshots": [],
+      "homepage_url": "https://obsidian.md/",
+      "categories": [
+        "Office",
+        "Productivity",
+        "Lilith"
+      ],
+      "popularity": 0.88
+    },
+    {
+      "package_id": "snap:discord",
+      "source_ids": [
+        "discord"
+      ],
+      "logical_id": "discord",
+      "name": "Discord",
+      "summary": "All-in-one voice, video, and text communication",
+      "description": "Discord is a communication platform designed for communities and friend groups. Create servers with text channels, voice channels, and video calls. Share your screen, stream games, and organize conversations.",
+      "icon_url": "https://dashboard.snapcraft.io/site_media/appmedia/discord.png",
+      "screenshots": [
+        "https://dashboard.snapcraft.io/site_media/appmedia/discord/screenshot_1.png",
+        "https://dashboard.snapcraft.io/site_media/appmedia/discord/screenshot_2.png"
+      ],
+      "homepage_url": "https://snapcraft.io/discord",
+      "categories": [
+        "Network",
+        "Communication"
+      ],
+      "popularity": 0.95
+    },
+    {
+      "package_id": "snap:spotify",
+      "source_ids": [
+        "spotify"
+      ],
+      "logical_id": "spotify",
+      "name": "Spotify",
+      "summary": "Digital music streaming service",
+      "description": "Spotify is the worlds most popular music streaming service with millions of songs, playlists, and podcasts. The Snap package provides easy installation with automatic updates.",
+      "icon_url": "https://dashboard.snapcraft.io/site_media/appmedia/spotify.png",
+      "screenshots": [],
+      "homepage_url": "https://snapcraft.io/spotify",
+      "categories": [
+        "Audio",
+        "Music"
+      ],
+      "popularity": 0.93
+    },
+    {
+      "package_id": "snap:vlc",
+      "source_ids": [
+        "vlc"
+      ],
+      "logical_id": "vlc",
+      "name": "Vlc",
+      "summary": "Free, open-source multimedia player",
+      "description": "VLC is the legendary media player that plays everything. The Snap package provides the latest version with automatic updates and sandboxed security.",
+      "icon_url": "https://dashboard.snapcraft.io/site_media/appmedia/vlc.png",
+      "screenshots": [],
+      "homepage_url": "https://snapcraft.io/vlc",
+      "categories": [
+        "Video",
+        "AudioVideo"
+      ],
+      "popularity": 0.9
+    },
+    {
+      "package_id": "snap:slack",
+      "source_ids": [
+        "slack"
+      ],
+      "logical_id": "slack",
+      "name": "Slack",
+      "summary": "Business communication and collaboration platform",
+      "description": "Slack is a team communication platform with channels, direct messages, file sharing, and integrations with hundreds of tools. The Snap package delivers the latest desktop client with automatic updates.",
+      "icon_url": "https://dashboard.snapcraft.io/site_media/appmedia/slack.png",
+      "screenshots": [],
+      "homepage_url": "https://snapcraft.io/slack",
+      "categories": [
+        "Network",
+        "Communication"
+      ],
+      "popularity": 0.88
+    },
+    {
+      "package_id": "snap:telegram-desktop",
+      "source_ids": [
+        "telegram-desktop"
+      ],
+      "logical_id": "telegram-desktop",
+      "name": "Telegram-Desktop",
+      "summary": "Fast, secure messaging app",
+      "description": "Telegram Desktop is the official desktop client for Telegrams cloud-based messaging service. Enjoy fast message delivery, end-to-end encrypted secret chats, large file sharing, and powerful group management.",
+      "icon_url": "https://dashboard.snapcraft.io/site_media/appmedia/telegram-desktop.png",
+      "screenshots": [],
+      "homepage_url": "https://snapcraft.io/telegram-desktop",
+      "categories": [
+        "Network",
+        "Communication"
+      ],
+      "popularity": 0.87
+    },
+    {
+      "package_id": "snap:signal-desktop",
+      "source_ids": [
+        "signal-desktop"
+      ],
+      "logical_id": "signal-desktop",
+      "name": "Signal-Desktop",
+      "summary": "Private messaging with end-to-end encryption",
+      "description": "Signal Desktop extends Signals encrypted messaging to your Linux desktop. Send text messages, make voice and video calls, and share files all protected by state-of-the-art end-to-end encryption.",
+      "icon_url": "https://dashboard.snapcraft.io/site_media/appmedia/signal-desktop.png",
+      "screenshots": [],
+      "homepage_url": "https://snapcraft.io/signal-desktop",
+      "categories": [
+        "Network",
+        "Communication",
+        "Security"
+      ],
+      "popularity": 0.85
+    },
+    {
+      "package_id": "snap:whatsapp-for-linux",
+      "source_ids": [
+        "whatsapp-for-linux"
+      ],
+      "logical_id": "whatsapp-for-linux",
+      "name": "Whatsapp-For-Linux",
+      "summary": "WhatsApp messaging on your desktop",
+      "description": "WhatsApp for Linux wraps the WhatsApp Web interface in a native desktop application with system tray integration and notifications.",
+      "icon_url": "https://dashboard.snapcraft.io/site_media/appmedia/whatsapp-for-linux.png",
+      "screenshots": [],
+      "homepage_url": "https://snapcraft.io/whatsapp-for-linux",
+      "categories": [
+        "Network",
+        "Communication"
+      ],
+      "popularity": 0.8
+    },
+    {
+      "package_id": "snap:firefox",
+      "source_ids": [
+        "firefox"
+      ],
+      "logical_id": "firefox",
+      "name": "Firefox",
+      "summary": "Fast, private, and safe web browser",
+      "description": "Mozilla Firefox is a free and open-source web browser developed by the Mozilla Foundation. The Snap package provides automatic background updates and enhanced security through sandboxing.",
+      "icon_url": "https://dashboard.snapcraft.io/site_media/appmedia/firefox.png",
+      "screenshots": [],
+      "homepage_url": "https://snapcraft.io/firefox",
+      "categories": [
+        "Network",
+        "Browser"
+      ],
+      "popularity": 0.95
+    },
+    {
+      "package_id": "snap:chromium",
+      "source_ids": [
+        "chromium"
+      ],
+      "logical_id": "chromium",
+      "name": "Chromium",
+      "summary": "Open-source web browser project",
+      "description": "Chromium is the open-source browser project that forms the basis for Google Chrome and many other browsers. The Snap package provides automatic updates and a secure, sandboxed browsing experience.",
+      "icon_url": "https://dashboard.snapcraft.io/site_media/appmedia/chromium.png",
+      "screenshots": [],
+      "homepage_url": "https://snapcraft.io/chromium",
+      "categories": [
+        "Network",
+        "Browser"
+      ],
+      "popularity": 0.85
+    },
+    {
+      "package_id": "snap:brave",
+      "source_ids": [
+        "brave"
+      ],
+      "logical_id": "brave",
+      "name": "Brave",
+      "summary": "Privacy-first web browser with ad blocking",
+      "description": "Brave is a privacy-focused web browser that blocks ads and trackers by default. Built on Chromium for compatibility, it includes a built-in ad blocker, HTTPS Everywhere, and fingerprinting protection.",
+      "icon_url": "https://dashboard.snapcraft.io/site_media/appmedia/brave.png",
+      "screenshots": [],
+      "homepage_url": "https://snapcraft.io/brave",
+      "categories": [
+        "Network",
+        "Browser",
+        "Security"
+      ],
+      "popularity": 0.82
+    },
+    {
+      "package_id": "snap:postman",
+      "source_ids": [
+        "postman"
+      ],
+      "logical_id": "postman",
+      "name": "Postman",
+      "summary": "API development and testing platform",
+      "description": "Postman is the industry-standard tool for API development, testing, and documentation. Create and send HTTP requests, organize them into collections, automate testing, and collaborate with your team.",
+      "icon_url": "https://dashboard.snapcraft.io/site_media/appmedia/postman.png",
+      "screenshots": [],
+      "homepage_url": "https://snapcraft.io/postman",
+      "categories": [
+        "Development",
+        "Network"
+      ],
+      "popularity": 0.85
+    },
+    {
+      "package_id": "snap:docker",
+      "source_ids": [
+        "docker"
+      ],
+      "logical_id": "docker",
+      "name": "Docker",
+      "summary": "Containerization platform for developers",
+      "description": "Docker provides containerization tools for building, shipping, and running applications in isolated environments. The Snap package includes the Docker CLI and daemon for managing containers, images, and networks.",
+      "icon_url": "https://dashboard.snapcraft.io/site_media/appmedia/docker.png",
+      "screenshots": [],
+      "homepage_url": "https://snapcraft.io/docker",
+      "categories": [
+        "Development",
+        "System"
+      ],
+      "popularity": 0.88
+    },
+    {
+      "package_id": "snap:notion-snap",
+      "source_ids": [
+        "notion-snap"
+      ],
+      "logical_id": "notion-snap",
+      "name": "Notion-Snap",
+      "summary": "All-in-one workspace for notes and projects",
+      "description": "Notion combines notes, databases, kanban boards, wikis, and calendars into a single workspace. The Snap package wraps the Notion web app in a native desktop client with system integration.",
+      "icon_url": "https://dashboard.snapcraft.io/site_media/appmedia/notion-snap.png",
+      "screenshots": [],
+      "homepage_url": "https://snapcraft.io/notion-snap",
+      "categories": [
+        "Productivity",
+        "Office"
+      ],
+      "popularity": 0.83
+    },
+    {
+      "package_id": "snap:figma-linux",
+      "source_ids": [
+        "figma-linux"
+      ],
+      "logical_id": "figma-linux",
+      "name": "Figma-Linux",
+      "summary": "Collaborative interface design tool",
+      "description": "Figma is a cloud-based design tool for creating interfaces, prototypes, and design systems. The Linux Snap package provides desktop access to Figmas powerful collaborative design platform.",
+      "icon_url": "https://dashboard.snapcraft.io/site_media/appmedia/figma-linux.png",
+      "screenshots": [],
+      "homepage_url": "https://snapcraft.io/figma-linux",
+      "categories": [
+        "Graphics",
+        "Development"
+      ],
+      "popularity": 0.8
+    },
+    {
+      "package_id": "snap:obs-studio",
+      "source_ids": [
+        "obs-studio"
+      ],
+      "logical_id": "obs-studio",
+      "name": "Obs-Studio",
+      "summary": "Free and open-source software for video recording and live streaming",
+      "description": "OBS Studio is the leading open-source software for video recording and live streaming. Capture your screen, webcam, and audio sources, compose them into scenes, and stream to YouTube, Twitch, or any RTMP server.",
+      "icon_url": "https://dashboard.snapcraft.io/site_media/appmedia/obs-studio.png",
+      "screenshots": [
+        "https://dashboard.snapcraft.io/site_media/appmedia/obs-studio/screenshot_1.png",
+        "https://dashboard.snapcraft.io/site_media/appmedia/obs-studio/screenshot_2.png"
+      ],
+      "homepage_url": "https://snapcraft.io/obs-studio",
+      "categories": [
+        "AudioVideo",
+        "Graphics"
+      ],
+      "popularity": 0.9
+    },
+    {
+      "package_id": "snap:kdenlive",
+      "source_ids": [
+        "kdenlive"
+      ],
+      "logical_id": "kdenlive",
+      "name": "Kdenlive",
+      "summary": "Professional video editing software",
+      "description": "Kdenlive is a powerful, open-source video editor based on the MLT Framework and KDE frameworks. Multi-track editing, proxy editing, color correction, effects, and transitions make it suitable for professional video production.",
+      "icon_url": "https://dashboard.snapcraft.io/site_media/appmedia/kdenlive.png",
+      "screenshots": [],
+      "homepage_url": "https://snapcraft.io/kdenlive",
+      "categories": [
+        "Video",
+        "AudioVideo"
+      ],
+      "popularity": 0.85
+    },
+    {
+      "package_id": "appimage:kdenlive",
+      "source_ids": [
+        "kdenlive",
+        "kdenlive"
+      ],
+      "logical_id": "kdenlive",
+      "name": "Kdenlive",
+      "summary": "Professional video editing software",
+      "description": "Kdenlive is a powerful, open-source video editor based on the MLT Framework. It features multi-track editing, proxy editing for smooth performance, a wide range of effects and transitions, color correction tools, and audio mixing.",
+      "icon_url": "https://appimage.github.io/icons/kdenlive.png",
+      "screenshots": [],
+      "homepage_url": "https://kdenlive.org/",
+      "categories": [
+        "Video",
+        "AudioVideo"
+      ],
+      "popularity": 0.88
+    },
+    {
+      "package_id": "appimage:inkscape",
+      "source_ids": [
+        "inkscape",
+        "inkscape"
+      ],
+      "logical_id": "inkscape",
+      "name": "Inkscape",
+      "summary": "Professional vector graphics editor",
+      "description": "Inkscape is a professional-quality vector graphics editor with capabilities similar to Adobe Illustrator. Create illustrations, icons, logos, diagrams, and more using bezier curves, shapes, text tools, and path operations.",
+      "icon_url": "https://appimage.github.io/icons/inkscape.png",
+      "screenshots": [],
+      "homepage_url": "https://inkscape.org/",
+      "categories": [
+        "Graphics",
+        "Design"
+      ],
+      "popularity": 0.9
+    },
+    {
+      "package_id": "appimage:blender",
+      "source_ids": [
+        "blender",
+        "blender"
+      ],
+      "logical_id": "blender",
+      "name": "Blender",
+      "summary": "Free and open-source 3D creation suite",
+      "description": "Blender is the free and open-source 3D creation suite supporting the entirety of the 3D pipeline - modeling, rigging, animation, simulation, rendering, compositing, motion tracking, video editing, and 2D animation pipeline.",
+      "icon_url": "https://appimage.github.io/icons/blender.png",
+      "screenshots": [],
+      "homepage_url": "https://www.blender.org/",
+      "categories": [
+        "Graphics",
+        "3D",
+        "Video"
+      ],
+      "popularity": 0.95
+    },
+    {
+      "package_id": "appimage:audacity",
+      "source_ids": [
+        "audacity",
+        "audacity"
+      ],
+      "logical_id": "audacity",
+      "name": "Audacity",
+      "summary": "Free, open-source audio editor and recorder",
+      "description": "Audacity is a free, easy-to-use, multi-track audio editor and recorder. Record live audio, convert tapes and records to digital, edit sound files, and apply effects like noise removal, equalization, and compression.",
+      "icon_url": "https://appimage.github.io/icons/audacity.png",
+      "screenshots": [],
+      "homepage_url": "https://www.audacityteam.org/",
+      "categories": [
+        "Audio",
+        "AudioVideo"
+      ],
+      "popularity": 0.9
+    },
+    {
+      "package_id": "appimage:obs-studio",
+      "source_ids": [
+        "obs-studio",
+        "obs studio"
+      ],
+      "logical_id": "obs-studio",
+      "name": "OBS Studio",
+      "summary": "Free and open-source software for video recording and live streaming",
+      "description": "OBS Studio offers real-time video/audio capture and compositing, scene composition with unlimited sources, encoding with x264 and NVENC, and direct streaming to Twitch, YouTube, and other platforms.",
+      "icon_url": "https://appimage.github.io/icons/obs-studio.png",
+      "screenshots": [],
+      "homepage_url": "https://obsproject.com/",
+      "categories": [
+        "AudioVideo",
+        "Graphics"
+      ],
+      "popularity": 0.92
+    },
+    {
+      "package_id": "appimage:libreoffice",
+      "source_ids": [
+        "libreoffice",
+        "libreoffice"
+      ],
+      "logical_id": "libreoffice",
+      "name": "LibreOffice",
+      "summary": "Full-featured office productivity suite",
+      "description": "LibreOffice is a powerful, free office suite with Writer (word processor), Calc (spreadsheets), Impress (presentations), Draw (vector graphics), Math (formulas), and Base (databases). Full compatibility with Microsoft Office formats.",
+      "icon_url": "https://appimage.github.io/icons/libreoffice.png",
+      "screenshots": [],
+      "homepage_url": "https://www.libreoffice.org/",
+      "categories": [
+        "Office",
+        "Productivity"
+      ],
+      "popularity": 0.95
+    },
+    {
+      "package_id": "appimage:thunderbird",
+      "source_ids": [
+        "thunderbird",
+        "thunderbird"
+      ],
+      "logical_id": "thunderbird",
+      "name": "Thunderbird",
+      "summary": "Free email application from Mozilla",
+      "description": "Thunderbird is a free email application from Mozilla that is easy to set up and customize. Manage multiple email accounts, calendars, contacts, and tasks in one place. Features powerful search and extensive add-on support.",
+      "icon_url": "https://appimage.github.io/icons/thunderbird.png",
+      "screenshots": [],
+      "homepage_url": "https://www.thunderbird.net/",
+      "categories": [
+        "Network",
+        "Office"
+      ],
+      "popularity": 0.9
+    },
+    {
+      "package_id": "appimage:filezilla",
+      "source_ids": [
+        "filezilla",
+        "filezilla"
+      ],
+      "logical_id": "filezilla",
+      "name": "FileZilla",
+      "summary": "Fast and reliable FTP, FTPS, and SFTP client",
+      "description": "FileZilla is a fast, reliable, and feature-rich FTP, FTPS, and SFTP client. Transfer files between your computer and remote servers with drag-and-drop simplicity, site manager for multiple connections, and remote file editing.",
+      "icon_url": "https://appimage.github.io/icons/filezilla.png",
+      "screenshots": [],
+      "homepage_url": "https://filezilla-project.org/",
+      "categories": [
+        "Network",
+        "Development"
+      ],
+      "popularity": 0.85
+    },
+    {
+      "package_id": "appimage:keepassxc",
+      "source_ids": [
+        "keepassxc",
+        "keepassxc"
+      ],
+      "logical_id": "keepassxc",
+      "name": "KeePassXC",
+      "summary": "Community fork of KeePassX cross-platform password manager",
+      "description": "KeePassXC is a modern, secure, and open-source password manager. Store all your passwords in an encrypted database protected by a master password. Features auto-type, browser integration, TOTP generation, and password strength analysis.",
+      "icon_url": "https://appimage.github.io/icons/keepassxc.png",
+      "screenshots": [],
+      "homepage_url": "https://keepassxc.org/",
+      "categories": [
+        "Security",
+        "Utility"
+      ],
+      "popularity": 0.88
+    },
+    {
+      "package_id": "appimage:bitwarden",
+      "source_ids": [
+        "bitwarden",
+        "bitwarden"
+      ],
+      "logical_id": "bitwarden",
+      "name": "Bitwarden",
+      "summary": "Open-source password management solution",
+      "description": "Bitwarden is an open-source password manager that securely stores and syncs your passwords across all devices. Features password generation, secure notes, two-factor authentication, and self-hosting options.",
+      "icon_url": "https://appimage.github.io/icons/bitwarden.png",
+      "screenshots": [],
+      "homepage_url": "https://bitwarden.com/",
+      "categories": [
+        "Security",
+        "Utility"
+      ],
+      "popularity": 0.87
+    },
+    {
+      "package_id": "appimage:joplin",
+      "source_ids": [
+        "joplin",
+        "joplin"
+      ],
+      "logical_id": "joplin",
+      "name": "Joplin",
+      "summary": "Open-source note-taking and to-do application",
+      "description": "Joplin is a free, open-source note-taking and to-do application with support for Markdown, notebooks, tags, and end-to-end encrypted synchronization. Sync via Dropbox, OneDrive, Nextcloud, or the Joplin Cloud service.",
+      "icon_url": "https://appimage.github.io/icons/joplin.png",
+      "screenshots": [],
+      "homepage_url": "https://joplinapp.org/",
+      "categories": [
+        "Productivity",
+        "Office"
+      ],
+      "popularity": 0.85
+    },
+    {
+      "package_id": "appimage:logseq",
+      "source_ids": [
+        "logseq",
+        "logseq"
+      ],
+      "logical_id": "logseq",
+      "name": "Logseq",
+      "summary": "Privacy-first, open-source knowledge base",
+      "description": "Logseq is a privacy-first, open-source knowledge base that works with Markdown and Org-mode files. Build a network of interconnected notes with bidirectional linking, block references, and a graph view. Local-first storage.",
+      "icon_url": "https://appimage.github.io/icons/logseq.png",
+      "screenshots": [],
+      "homepage_url": "https://logseq.com/",
+      "categories": [
+        "Productivity",
+        "Office"
+      ],
+      "popularity": 0.83
+    },
+    {
+      "package_id": "appimage:marktext",
+      "source_ids": [
+        "marktext",
+        "mark text"
+      ],
+      "logical_id": "marktext",
+      "name": "Mark Text",
+      "summary": "Simple and elegant Markdown editor",
+      "description": "Mark Text is a simple and elegant Markdown editor focused on speed and ease of use. Features a WYSIWYG-like editing experience with live preview, export to HTML and PDF, and support for math formulas and diagrams.",
+      "icon_url": "https://appimage.github.io/icons/marktext.png",
+      "screenshots": [],
+      "homepage_url": "https://marktext.app/",
+      "categories": [
+        "Productivity",
+        "Writing"
+      ],
+      "popularity": 0.78
+    },
+    {
+      "package_id": "appimage:typora",
+      "source_ids": [
+        "typora",
+        "typora"
+      ],
+      "logical_id": "typora",
+      "name": "Typora",
+      "summary": "Minimal Markdown editor with live preview",
+      "description": "Typora is a minimal Markdown editor that seamlessly blends editing and preview into a single interface. Write Markdown and see the formatted result instantly. Supports tables, code blocks, math formulas, diagrams, and export.",
+      "icon_url": "https://appimage.github.io/icons/typora.png",
+      "screenshots": [],
+      "homepage_url": "https://typora.io/",
+      "categories": [
+        "Productivity",
+        "Writing"
+      ],
+      "popularity": 0.82
+    },
+    {
+      "package_id": "appimage:signal",
+      "source_ids": [
+        "signal",
+        "signal"
+      ],
+      "logical_id": "signal",
+      "name": "Signal",
+      "summary": "Private messenger with end-to-end encryption",
+      "description": "Signal is the gold standard for private messaging with state-of-the-art end-to-end encryption. Send text messages, make voice and video calls, share files, and create group chats - all protected by the Signal Protocol.",
+      "icon_url": "https://appimage.github.io/icons/signal.png",
+      "screenshots": [],
+      "homepage_url": "https://signal.org/",
+      "categories": [
+        "Network",
+        "Communication",
+        "Security"
+      ],
+      "popularity": 0.88
+    },
+    {
+      "package_id": "appimage:telegram",
+      "source_ids": [
+        "telegram",
+        "telegram"
+      ],
+      "logical_id": "telegram",
+      "name": "Telegram",
+      "summary": "Cloud-based messaging with speed and security",
+      "description": "Telegram is a cloud-based messaging app focused on speed and security. Send messages, photos, videos, and files of any type and size. Create groups with up to 200,000 members, channels for broadcasting, and bots.",
+      "icon_url": "https://appimage.github.io/icons/telegram.png",
+      "screenshots": [],
+      "homepage_url": "https://telegram.org/",
+      "categories": [
+        "Network",
+        "Communication"
+      ],
+      "popularity": 0.87
+    },
+    {
+      "package_id": "appimage:discord",
+      "source_ids": [
+        "discord",
+        "discord"
+      ],
+      "logical_id": "discord",
+      "name": "Discord",
+      "summary": "Voice, video, and text communication for communities",
+      "description": "Discord is the go-to platform for voice, video, and text communication in communities and friend groups. Create servers with organized channels, share your screen, stream games, and integrate with bots and services.",
+      "icon_url": "https://appimage.github.io/icons/discord.png",
+      "screenshots": [],
+      "homepage_url": "https://discord.com/",
+      "categories": [
+        "Network",
+        "Communication"
+      ],
+      "popularity": 0.92
+    },
+    {
+      "package_id": "appimage:slack",
+      "source_ids": [
+        "slack",
+        "slack"
+      ],
+      "logical_id": "slack",
+      "name": "Slack",
+      "summary": "Business communication and team collaboration",
+      "description": "Slack brings team communication and collaboration into one place with channels, direct messages, file sharing, and hundreds of integrations. The AppImage version runs on any Linux distribution without installation.",
+      "icon_url": "https://appimage.github.io/icons/slack.png",
+      "screenshots": [],
+      "homepage_url": "https://slack.com/",
+      "categories": [
+        "Network",
+        "Communication"
+      ],
+      "popularity": 0.85
+    },
+    {
+      "package_id": "appimage:zoom",
+      "source_ids": [
+        "zoom",
+        "zoom"
+      ],
+      "logical_id": "zoom",
+      "name": "Zoom",
+      "summary": "Video conferencing and online meetings",
+      "description": "Zoom is the leading video conferencing platform for meetings, webinars, and online collaboration. The AppImage version provides a portable installation that works across distributions with screen sharing and virtual backgrounds.",
+      "icon_url": "https://appimage.github.io/icons/zoom.png",
+      "screenshots": [],
+      "homepage_url": "https://zoom.us/",
+      "categories": [
+        "Network",
+        "AudioVideo"
+      ],
+      "popularity": 0.9
+    },
+    {
+      "package_id": "appimage:sublime-text",
+      "source_ids": [
+        "sublime-text",
+        "sublime text"
+      ],
+      "logical_id": "sublime-text",
+      "name": "Sublime Text",
+      "summary": "Sophisticated text editor for code and markup",
+      "description": "Sublime Text is a sophisticated text editor for code, markup, and prose. Features include multiple selections, command palette, minimap, split editing, and a powerful plugin API. Blazingly fast performance even with large files.",
+      "icon_url": "https://appimage.github.io/icons/sublime-text.png",
+      "screenshots": [],
+      "homepage_url": "https://www.sublimetext.com/",
+      "categories": [
+        "Development"
+      ],
+      "popularity": 0.88
+    },
+    {
+      "package_id": "appimage:atom",
+      "source_ids": [
+        "atom",
+        "atom"
+      ],
+      "logical_id": "atom",
+      "name": "Atom",
+      "summary": "A hackable text editor for the 21st Century",
+      "description": "Atom is a hackable text editor built on web technologies with Git integration, a package manager, smart autocompletion, and multiple panes. Customize everything with CSS and extend functionality with thousands of community packages.",
+      "icon_url": "https://appimage.github.io/icons/atom.png",
+      "screenshots": [],
+      "homepage_url": "https://atom.io/",
+      "categories": [
+        "Development"
+      ],
+      "popularity": 0.75
+    },
+    {
+      "package_id": "appimage:stellarium",
+      "source_ids": [
+        "stellarium",
+        "stellarium"
+      ],
+      "logical_id": "stellarium",
+      "name": "Stellarium",
+      "summary": "Free planetarium software showing realistic 3D sky",
+      "description": "Stellarium renders a realistic 3D sky in real time, showing stars, constellations, planets, nebulae, and more from any location on Earth. Used by amateur astronomers, educators, and planetariums.",
+      "icon_url": "https://appimage.github.io/icons/stellarium.png",
+      "screenshots": [],
+      "homepage_url": "https://stellarium.org/",
+      "categories": [
+        "Education",
+        "Science"
+      ],
+      "popularity": 0.85
+    },
+    {
+      "package_id": "soar:neovim",
+      "source_ids": [
+        "neovim"
+      ],
+      "logical_id": "neovim",
+      "name": "Neovim",
+      "summary": "Hyperextensible Vim-based text editor",
+      "description": "Neovim is a refactor of Vim focused on extensibility and usability. It features a built-in LSP client, tree-sitter parsing for better syntax highlighting, asynchronous plugin support, and a modern API.",
+      "icon_url": "https://appimage.github.io/icons/neovim.png",
+      "screenshots": [],
+      "homepage_url": "https://neovim.io/",
+      "categories": [
+        "Development",
+        "Utility"
+      ],
+      "popularity": 0.92
+    },
+    {
+      "package_id": "soar:lazygit",
+      "source_ids": [
+        "lazygit"
+      ],
+      "logical_id": "lazygit",
+      "name": "lazygit",
+      "summary": "Simple terminal UI for git commands",
+      "description": "lazygit is a simple terminal UI for git commands that makes complex git operations intuitive and fast. Stage individual lines, resolve merge conflicts visually, rebase interactively, and manage branches with keyboard shortcuts.",
+      "icon_url": "https://appimage.github.io/icons/lazygit.png",
+      "screenshots": [],
+      "homepage_url": "https://github.com/jesseduffield/lazygit",
+      "categories": [
+        "Development"
+      ],
+      "popularity": 0.85
+    },
+    {
+      "package_id": "soar:bat",
+      "source_ids": [
+        "bat"
+      ],
+      "logical_id": "bat",
+      "name": "bat",
+      "summary": "A cat clone with syntax highlighting and Git integration",
+      "description": "bat is a cat clone with wings - it adds syntax highlighting, Git integration, and automatic paging to the classic cat command. View file contents with color-coded syntax for hundreds of languages.",
+      "icon_url": "https://appimage.github.io/icons/bat.png",
+      "screenshots": [],
+      "homepage_url": "https://github.com/sharkdp/bat",
+      "categories": [
+        "Development",
+        "Utility"
+      ],
+      "popularity": 0.88
+    },
+    {
+      "package_id": "soar:fd",
+      "source_ids": [
+        "fd"
+      ],
+      "logical_id": "fd",
+      "name": "fd",
+      "summary": "A simple, fast, and user-friendly alternative to find",
+      "description": "fd is a fast, user-friendly alternative to the find command. It features colorful output, regex and glob patterns, parallel execution, and smart case-insensitive search by default.",
+      "icon_url": "https://appimage.github.io/icons/fd.png",
+      "screenshots": [],
+      "homepage_url": "https://github.com/sharkdp/fd",
+      "categories": [
+        "Development",
+        "Utility"
+      ],
+      "popularity": 0.87
+    },
+    {
+      "package_id": "soar:ripgrep",
+      "source_ids": [
+        "ripgrep"
+      ],
+      "logical_id": "ripgrep",
+      "name": "ripgrep",
+      "summary": "A line-oriented search tool that recursively searches directories",
+      "description": "ripgrep (rg) is an extremely fast line-oriented search tool that recursively searches your current directory for a regex pattern. It combines the usability of The Silver Searcher with the raw speed of GNU grep.",
+      "icon_url": "https://appimage.github.io/icons/ripgrep.png",
+      "screenshots": [],
+      "homepage_url": "https://github.com/BurntSushi/ripgrep",
+      "categories": [
+        "Development",
+        "Utility"
+      ],
+      "popularity": 0.9
+    },
+    {
+      "package_id": "soar:zoxide",
+      "source_ids": [
+        "zoxide"
+      ],
+      "logical_id": "zoxide",
+      "name": "zoxide",
+      "summary": "A smarter cd command that learns your habits",
+      "description": "zoxide is a smarter cd command that remembers which directories you use most frequently. Instead of typing long paths, just type z proj to jump to your project directory.",
+      "icon_url": "https://appimage.github.io/icons/zoxide.png",
+      "screenshots": [],
+      "homepage_url": "https://github.com/ajeetdsouza/zoxide",
+      "categories": [
+        "Development",
+        "Utility"
+      ],
+      "popularity": 0.82
+    },
+    {
+      "package_id": "soar:starship",
+      "source_ids": [
+        "starship"
+      ],
+      "logical_id": "starship",
+      "name": "Starship",
+      "summary": "The minimal, blazing-fast, and infinitely customizable prompt",
+      "description": "Starship is a minimal, blazing-fast, and infinitely customizable shell prompt for any shell. It shows git branch, package versions, command duration, and more in a beautiful, cross-shell compatible format.",
+      "icon_url": "https://appimage.github.io/icons/starship.png",
+      "screenshots": [],
+      "homepage_url": "https://starship.rs/",
+      "categories": [
+        "Development",
+        "Utility"
+      ],
+      "popularity": 0.88
+    },
+    {
+      "package_id": "soar:htop",
+      "source_ids": [
+        "htop"
+      ],
+      "logical_id": "htop",
+      "name": "htop",
+      "summary": "Interactive process viewer and system monitor",
+      "description": "htop is an interactive process viewer and system monitor that improves upon the traditional top command. It features a colorful, tree-view display, mouse support, easy process killing, and search/filter capability.",
+      "icon_url": "https://appimage.github.io/icons/htop.png",
+      "screenshots": [],
+      "homepage_url": "https://htop.dev/",
+      "categories": [
+        "System",
+        "Utility"
+      ],
+      "popularity": 0.92
+    },
+    {
+      "package_id": "soar:tmux",
+      "source_ids": [
+        "tmux"
+      ],
+      "logical_id": "tmux",
+      "name": "tmux",
+      "summary": "Terminal multiplexer for managing multiple terminal sessions",
+      "description": "tmux is a terminal multiplexer that lets you switch between multiple programs in one terminal, detach them to run in the background, and reattach them later. Essential for remote work and long-running processes.",
+      "icon_url": "https://appimage.github.io/icons/tmux.png",
+      "screenshots": [],
+      "homepage_url": "https://github.com/tmux/tmux",
+      "categories": [
+        "Development",
+        "System"
+      ],
+      "popularity": 0.9
+    },
+    {
+      "package_id": "soar:fzf",
+      "source_ids": [
+        "fzf"
+      ],
+      "logical_id": "fzf",
+      "name": "fzf",
+      "summary": "A command-line fuzzy finder",
+      "description": "fzf is a general-purpose command-line fuzzy finder that works with any list - files, command history, processes, hostnames, bookmarks, and more. Its interactive fuzzy matching makes finding items in large lists instant.",
+      "icon_url": "https://appimage.github.io/icons/fzf.png",
+      "screenshots": [],
+      "homepage_url": "https://github.com/junegunn/fzf",
+      "categories": [
+        "Development",
+        "Utility"
+      ],
+      "popularity": 0.89
+    },
+    {
+      "package_id": "homebrew:google-chrome",
+      "source_ids": [
+        "google-chrome"
+      ],
+      "logical_id": "google-chrome",
+      "name": "Google Chrome",
+      "summary": "Fast, secure web browser from Google",
+      "description": "Google Chrome is the worlds most popular web browser, known for its speed, simplicity, and security. Features include tabbed browsing, bookmark syncing, extension support, and built-in Google services integration.",
+      "icon_url": "https://appimage.github.io/icons/google-chrome.png",
+      "screenshots": [],
+      "homepage_url": "https://www.google.com/chrome/",
+      "categories": [
+        "Network",
+        "Browser"
+      ],
+      "popularity": 0.95
+    },
+    {
+      "package_id": "homebrew:visual-studio-code",
+      "source_ids": [
+        "visual-studio-code"
+      ],
+      "logical_id": "visual-studio-code",
+      "name": "Visual Studio Code",
+      "summary": "Code editing. Redefined.",
+      "description": "Visual Studio Code is a lightweight but powerful source code editor with built-in support for JavaScript, TypeScript, Node.js, and a rich ecosystem of extensions. Features IntelliSense, debugging, and Git integration.",
+      "icon_url": "https://appimage.github.io/icons/visual-studio-code.png",
+      "screenshots": [],
+      "homepage_url": "https://code.visualstudio.com/",
+      "categories": [
+        "Development"
+      ],
+      "popularity": 0.97
+    },
+    {
+      "package_id": "homebrew:docker",
+      "source_ids": [
+        "docker"
+      ],
+      "logical_id": "docker",
+      "name": "Docker Desktop",
+      "summary": "Containerization platform with GUI management",
+      "description": "Docker Desktop provides a complete containerization platform with a graphical management interface. Build, share, and run containerized applications with integrated Kubernetes, volume management, and extension support.",
+      "icon_url": "https://appimage.github.io/icons/docker.png",
+      "screenshots": [],
+      "homepage_url": "https://www.docker.com/products/docker-desktop/",
+      "categories": [
+        "Development",
+        "System"
+      ],
+      "popularity": 0.9
+    },
+    {
+      "package_id": "homebrew:rectangle",
+      "source_ids": [
+        "rectangle"
+      ],
+      "logical_id": "rectangle",
+      "name": "Rectangle",
+      "summary": "Move and resize windows using keyboard shortcuts",
+      "description": "Rectangle is a window management app that lets you move and resize windows using keyboard shortcuts or snap areas. A free, open-source alternative to Spectacle with additional features.",
+      "icon_url": "https://appimage.github.io/icons/rectangle.png",
+      "screenshots": [],
+      "homepage_url": "https://rectangleapp.com/",
+      "categories": [
+        "Utility",
+        "Settings"
+      ],
+      "popularity": 0.8
     }
   ]
 }
