@@ -30,8 +30,9 @@ rusqlite = { version = "0.30", features = ["bundled"] }
 # Desktop notifications
 notify-rust = "4.10"
 
-# HTTP client for GitHub adapter
-reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
+# HTTP client for adapters
+reqwest = { version = "0.11", features = ["json", "rustls-tls", "blocking"], default-features = false }
+ureq = { version = "2.9", features = ["json"] }
 
 # Standard directories
 dirs = "5.0"
