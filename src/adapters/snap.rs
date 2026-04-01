@@ -58,14 +58,7 @@ fn fetch_snap_metadata(name: &str) -> Option<PackageMetadata> {
                 .map(|pn| pn == name)
                 .unwrap_or(false)
         })
-        .or_else(|| {
-            body.embedded
-                .as_ref()?
-                .packages
-                .as_ref()?
-                .iter()
-                .next()
-        })?;
+        .or_else(|| body.embedded.as_ref()?.packages.as_ref()?.iter().next())?;
 
     let icon_url = pkg.icon_url.clone().filter(|u| !u.is_empty());
     let screenshots = pkg.screenshot_urls.clone().unwrap_or_default();
@@ -75,8 +68,16 @@ fn fetch_snap_metadata(name: &str) -> Option<PackageMetadata> {
     let rating = pkg.ratings_average.filter(|r| *r > 0.0).map(|r| r as f32);
 
     Some(PackageMetadata {
-        summary: if summary.is_empty() { String::new() } else { summary },
-        description: if description.is_empty() { String::new() } else { description },
+        summary: if summary.is_empty() {
+            String::new()
+        } else {
+            summary
+        },
+        description: if description.is_empty() {
+            String::new()
+        } else {
+            description
+        },
         icon_url,
         screenshots,
         documentation_url: None,
@@ -95,7 +96,11 @@ fn enrich_from_api(pkg: &mut Package) {
         return;
     }
 
-    let snap_name = pkg.identity.id.strip_prefix("snap:").unwrap_or(&pkg.identity.id);
+    let snap_name = pkg
+        .identity
+        .id
+        .strip_prefix("snap:")
+        .unwrap_or(&pkg.identity.id);
     if let Some(api_meta) = fetch_snap_metadata(snap_name) {
         if pkg.metadata.icon_url.is_none() {
             pkg.metadata.icon_url = api_meta.icon_url;
