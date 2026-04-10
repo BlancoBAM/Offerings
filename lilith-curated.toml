@@ -1,0 +1,106 @@
+# Lilith Curated Apps
+#
+# Each entry represents an app hand-picked for the Lilith Linux experience.
+# Source is determined by the URL pattern (Flathub → flatpak, Snapcraft → snap,
+# GitHub → github, direct AppImage links → appimage).
+#
+# Categories are assigned based on app function and used for sidebar organization.
+# Every entry implicitly belongs to the "Lilith" curated section.
+
+# ─── Productivity & Note-taking ───────────────────────────────────────────────
+
+https://flathub.org/en/apps/io.unobserved.espansoGUI          # Espanso GUI — text expander
+https://flathub.org/en/apps/com.matthiasn.lotti               # Lotti — distraction-free writing
+https://flathub.org/en/apps/io.github.shonebinu.Brief         # Brief — minimal notes
+https://flathub.org/en/apps/com.tominlab.wonderpen            # WonderPen — focused writing
+https://flathub.org/en/apps/app.tintero.Tintero               # Tintero — Markdown editor
+https://flathub.org/en/apps/com.vixalien.sticky               # Sticky Notes
+https://flathub.org/en/apps/io.github.alainm23.planify        # Planify — task management
+https://flathub.org/en/apps/io.github.troyeguo.koodo-reader   # Koodo Reader — ebook reader
+https://flathub.org/en/apps/com.remnote.RemNote               # RemNote — knowledge management
+https://flathub.org/en/apps/dev.mariinkys.Oboete              # Oboete — flashcards
+https://flathub.org/en/apps/io.github.ans_ibrahim.Memento     # Memento — notes
+https://snapcraft.io/journal                                  # Journal — diary app
+https://flathub.org/en/apps/io.github.quantum_mutnauq.fast_reader_gtk  # Fast Reader GTK
+
+# ─── System & Utilities ───────────────────────────────────────────────────────
+
+https://flathub.org/en/apps/io.github.schwarzen.colormydesktop          # Color My Desktop
+https://flathub.org/en/apps/page.codeberg.JakobDev.jdSystemMonitor      # jd System Monitor
+https://flathub.org/en/apps/org.tabos.saldo                             # Saldo — finance tracker
+https://flathub.org/en/apps/org.gnome.NetworkDisplays                   # Network Displays (Miracast)
+https://flathub.org/en/apps/org.gnome.SimpleScan                        # Document Scanner
+https://flathub.org/en/apps/org.ksnip.ksnip                             # Ksnip — screenshots
+https://flathub.org/en/apps/org.gnome.Boxes                             # GNOME Boxes — VMs
+https://github.com/winapps-org/winapps                                  # WinApps — Windows on Linux
+https://github.com/aspizu/nixite                                        # Nixite — Nix config
+https://github.com/gethomepage/homepage                                 # Homepage — dashboard
+
+# ─── Graphics & Design ────────────────────────────────────────────────────────
+
+https://flathub.org/en/apps/org.kde.digikam                 # digiKam — photo management
+https://flathub.org/en/apps/org.fontforge.FontForge         # FontForge — font editor
+https://flathub.org/en/apps/io.github.qcanvas.QCanvasApp    # QCanvas — college student dashboard
+
+# ─── Themes & Wallpapers ──────────────────────────────────────────────────────
+
+https://flathub.org/en/apps/io.github.thiefmd.themegenerator          # Theme Generator
+https://flathub.org/en/apps/es.estoes.wallpaperDownloader             # Wallpaper Downloader
+https://flathub.org/en/apps/com.github.maoschanz.DynamicWallpaperEditor # Dynamic Wallpaper
+https://flathub.org/en/apps/com.ktechpit.wonderwall                   # Wallpapers
+https://flathub.org/en/apps/com.ktechpit.colorwall                    # Wallpapers
+https://flathub.org/en/apps/io.github.swordpuffin.wardrobe            # Wardrobe — theme manager
+https://flathub.org/en/apps/io.github.debasish_patra_1987.linuxthemestore # Linux Theme Store
+http://opencode.net/dfn2/pling-store                                  # Pling Store
+
+# ─── Terminals & Development ──────────────────────────────────────────────────
+
+https://flathub.org/en/apps/app.drey.Warp                     # Warp — file sharing over LAN
+https://flathub.org/en/apps/org.wezfurlong.wezterm            # WezTerm — terminal
+https://flathub.org/en/apps/com.sublimehq.SublimeText         # Sublime Text
+https://app.warp.dev/download?package=appimage                # Warp (AppImage)
+https://releases.hyper.is/download/AppImage                   # Hyper — terminal
+https://github.com/wavetermdev/waveterm                       # Wave Terminal
+https://github.com/johnlindquist/kit                          # Kit — script writing automation
+https://github.com/psygreg/linuxtoys                          # Linux Toys
+
+# ─── Communication ────────────────────────────────────────────────────────────
+
+https://flathub.org/en/apps/us.zoom.Zoom                                    # Zoom
+https://flathub.org/en/apps/com.github.IsmaelMartinez.teams_for_linux       # Teams for Linux
+https://flathub.org/en/apps/me.proton.Mail                                  # Proton Mail
+https://flathub.org/en/apps/me.proton.Pass                                  # Proton Pass
+https://flathub.org/en/apps/org.ferdium.Ferdium                             # Ferdium — messaging hub
+https://flathub.org/en/apps/io.github.halfmexican.Mingle                    # Mingle — combine emojis
+
+# ─── Browsers ─────────────────────────────────────────────────────────────────
+
+https://flathub.org/en/apps/app.zen_browser.zen               # Zen Browser
+https://files.browseros.com/download/BrowserOS.AppImage       # AI built into a browser
+
+# ─── Entertainment & Astrology ────────────────────────────────────────────────
+
+https://flathub.org/en/apps/io.github.alamahant.TarotCaster   # Tarot Caster
+https://flathub.org/en/apps/land.arcana.TarotCanvas           # Tarot Canvas
+https://flathub.org/en/apps/io.github.alamahant.Asteria       # Asteria — astrology
+https://flathub.org/en/apps/it.astrogods.AstroGods            # AstroGods — mythology
+https://flathub.org/en/apps/org.stellarium.Stellarium         # Stellarium — planetarium
+
+# ─── Audio & Music ────────────────────────────────────────────────────────────
+
+https://flathub.org/en/apps/com.rafaelmardojai.Blanket        # Blanket — ambient sounds
+https://flathub.org/en/apps/net.ankiweb.Anki                  # Anki — flashcards
+https://flathub.org/en/apps/dev.toastbits.spmp                # SpMp — music client
+
+# ─── Office & Productivity ────────────────────────────────────────────────────
+
+https://flathub.org/en/apps/com.wps.Office                    # WPS Office
+https://flathub.org/en/apps/net.bontal.Catalyst               # Catalyst — productivity
+https://flathub.org/en/apps/com.github.dahenson.agenda        # Agenda — calendar
+https://flathub.org/en/apps/dev.qwery.AddWater                # Add Water — customize firefox
+
+# ─── Miscellaneous ────────────────────────────────────────────────────────────
+
+https://flathub.org/en/apps/com.github.joseexposito.touche    # Touche — touchpad gestures
+https://flathub.org/en/apps/io.github.sitraorg.sitra          # Sitra — system info
+https://flathub.org/en/apps/com.github.appadeia.Taigo         # Taigo — rhythm game
