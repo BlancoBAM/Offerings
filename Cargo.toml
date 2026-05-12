@@ -64,12 +64,12 @@ opt-level = 1
 maintainer = "BlancoBAM"
 copyright = "2024, BlancoBAM"
 license-file = ["LICENSE", "0"]
-depends = "$auto, libgtk-3-0, libayatana-appindicator3-1, libwebkit2gtk-4.1-0"
+depends = "$auto, libfontconfig1, libxcb1, libxkbcommon0"
 section = "utility"
 priority = "optional"
 assets = [
     ["target/release/offerings", "usr/bin/offerings", "755"],
-    ["assets/icon-logo.png", "usr/share/icons/hicolor/scalable/apps/offerings.png", "644"],
+    ["assets/icon-logo.png", "usr/share/icons/hicolor/256x256/apps/offerings.png", "644"],
     ["offerings.desktop", "usr/share/applications/offerings.desktop", "644"],
 ]
 

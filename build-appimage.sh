@@ -1,12 +1,12 @@
 #!/bin/bash
 # Build Offerings AppImage
 # Usage: ./build-appimage.sh [version]
+# Works in CI without FUSE via APPIMAGE_EXTRACT_AND_RUN=1
 
 set -e
 
 VERSION=${1:-$(git describe --tags --always --dirty 2>/dev/null || echo "dev")}
 ARCH=$(uname -m)
-APP_NAME="Offerings"
 BUILD_DIR="$(pwd)/appimage-build"
 OUTPUT_DIR="$(pwd)/dist"
 
@@ -14,76 +14,60 @@ echo "=== Building Offerings AppImage ==="
 echo "Version: $VERSION"
 echo "Architecture: $ARCH"
 
-# Clean previous builds
-rm -rf "$BUILD_DIR" "$OUTPUT_DIR"
+rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR" "$OUTPUT_DIR"
 
-# Build release binary
-echo "Building release binary..."
-cargo build --release
-
-# Copy binary
-cp target/release/offerings "$BUILD_DIR/"
+# Build release binary if not already done
+if [ ! -f "target/release/offerings" ]; then
+    echo "Building release binary..."
+    cargo build --release
+fi
 
 # Create AppDir structure
-mkdir -p "$BUILD_DIR/AppDir/usr/bin"
-mkdir -p "$BUILD_DIR/AppDir/usr/share/applications"
-mkdir -p "$BUILD_DIR/AppDir/usr/share/icons/hicolor/scalable/apps"
-mkdir -p "$BUILD_DIR/AppDir/usr/share/metainfo"
+APPDIR="$BUILD_DIR/AppDir"
+mkdir -p "$APPDIR/usr/bin"
+mkdir -p "$APPDIR/usr/share/applications"
+mkdir -p "$APPDIR/usr/share/icons/hicolor/256x256/apps"
+mkdir -p "$APPDIR/usr/share/icons/hicolor/scalable/apps"
+mkdir -p "$APPDIR/usr/share/metainfo"
 
-# Copy binary to AppDir
-cp "$BUILD_DIR/offerings" "$BUILD_DIR/AppDir/usr/bin/"
+cp "target/release/offerings" "$APPDIR/usr/bin/offerings"
+chmod +x "$APPDIR/usr/bin/offerings"
 
-# Create desktop file
-cat > "$BUILD_DIR/AppDir/usr/share/applications/offerings.desktop" << 'EOF'
-[Desktop Entry]
-Type=Application
-Name=Offerings
-GenericName=App Store
-Comment=Unified package manager for Flatpak, Snap, AppImage and more
-Exec=offerings %U
-Icon=offerings
-Categories=Utility;PackageManager;
-Keywords=store;install;packages;flatpak;snap;appimage;
-Terminal=false
-StartupNotify=true
-MimeType=x-scheme-handler/offerings;
-EOF
-
-# Create AppImage desktop file (for the AppImage itself)
-cat > "$BUILD_DIR/AppDir/offerings.desktop" << 'EOF'
-[Desktop Entry]
-Type=Application
-Name=Offerings
-GenericName=App Store
-Comment=Unified package manager for Flatpak, Snap, AppImage and more
-Exec=offerings %U
-Icon=offerings
-Categories=Utility;PackageManager;
-Terminal=false
-StartupNotify=true
-EOF
-
-# Create icon (simple SVG for now)
-cat > "$BUILD_DIR/AppDir/usr/share/icons/hicolor/scalable/apps/offerings.svg" << 'EOF'
+# Icon
+if [ -f "assets/icon-logo.png" ]; then
+    cp "assets/icon-logo.png" "$APPDIR/usr/share/icons/hicolor/256x256/apps/offerings.png"
+    cp "assets/icon-logo.png" "$APPDIR/offerings.png"
+    ICON_ARG="--icon-file=$APPDIR/usr/share/icons/hicolor/256x256/apps/offerings.png"
+else
+    cat > "$APPDIR/usr/share/icons/hicolor/scalable/apps/offerings.svg" << 'SVGEOF'
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#8b0000"/>
-      <stop offset="100%" style="stop-color:#5c0000"/>
-    </linearGradient>
-  </defs>
-  <rect width="128" height="128" rx="14" fill="url(#bg)"/>
-  <text x="64" y="85" font-family="Arial, sans-serif" font-size="60" font-weight="bold" fill="white" text-anchor="middle">O</text>
-  <text x="64" y="110" font-family="Arial, sans-serif" font-size="14" fill="#e0e0e0" text-anchor="middle">OFFERINGS</text>
+  <rect width="128" height="128" rx="14" fill="#8b0000"/>
+  <text x="64" y="85" font-family="Arial" font-size="60" font-weight="bold" fill="white" text-anchor="middle">O</text>
 </svg>
+SVGEOF
+    cp "$APPDIR/usr/share/icons/hicolor/scalable/apps/offerings.svg" "$APPDIR/offerings.svg"
+    ICON_ARG="--icon-file=$APPDIR/usr/share/icons/hicolor/scalable/apps/offerings.svg"
+fi
+
+# Desktop file
+cat > "$APPDIR/usr/share/applications/offerings.desktop" << 'EOF'
+[Desktop Entry]
+Type=Application
+Name=Offerings
+GenericName=App Store
+Comment=Unified package manager for Flatpak, Snap, AppImage and more
+Exec=offerings %U
+Icon=offerings
+Categories=Utility;PackageManager;
+Terminal=false
+StartupNotify=true
 EOF
 
-# Copy icon to root of AppDir
-cp "$BUILD_DIR/AppDir/usr/share/icons/hicolor/scalable/apps/offerings.svg" "$BUILD_DIR/AppDir/offerings.svg"
+cp "$APPDIR/usr/share/applications/offerings.desktop" "$APPDIR/offerings.desktop"
 
-# Create AppStream metadata
-cat > "$BUILD_DIR/AppDir/usr/share/metainfo/com.lilithlinux.Offerings.metainfo.xml" << EOF
+# AppStream metadata
+cat > "$APPDIR/usr/share/metainfo/com.lilithlinux.Offerings.metainfo.xml" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
   <id>com.lilithlinux.Offerings</id>
@@ -91,63 +75,52 @@ cat > "$BUILD_DIR/AppDir/usr/share/metainfo/com.lilithlinux.Offerings.metainfo.x
   <project_license>MIT</project_license>
   <name>Offerings</name>
   <summary>Unified package manager for Linux</summary>
-  <description>
-    <p>
-      Offerings is a unified package manager GUI for Linux that combines multiple package sources
-      including Flatpak, Snap, AppImage, and more into a single, beautiful interface.
-    </p>
-    <p>Features:</p>
-    <ul>
-      <li>Browse packages from multiple sources</li>
-      <li>One-click install and removal</li>
-      <li>Category-based browsing</li>
-      <li>Search functionality</li>
-      <li>Automatic updates</li>
-      <li>Source selection for duplicate packages</li>
-    </ul>
-  </description>
   <launchable type="desktop-id">offerings.desktop</launchable>
   <url type="homepage">https://github.com/BlancoBAM/Offerings</url>
-  <url type="bugtracker">https://github.com/BlancoBAM/Offerings/issues</url>
-  <developer id="com.lilithlinux">
-    <name>Lilith Linux</name>
-  </developer>
   <releases>
-    <release version="$VERSION" date="$(date -I)"/>
+    <release version="${VERSION}" date="$(date -I)"/>
   </releases>
   <content_rating type="oars-1.1"/>
 </component>
 EOF
 
-# Create AppRun script
-cat > "$BUILD_DIR/AppDir/AppRun" << 'EOF'
+# AppRun entry point
+cat > "$APPDIR/AppRun" << 'APPRUNEOF'
 #!/bin/bash
 HERE="$(dirname "$(readlink -f "${0}")")"
 export PATH="${HERE}/usr/bin:${PATH}"
 export LD_LIBRARY_PATH="${HERE}/usr/lib:${LD_LIBRARY_PATH}"
+if [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ]; then
+    export DISPLAY=:0
+fi
 exec "${HERE}/usr/bin/offerings" "$@"
-EOF
-chmod +x "$BUILD_DIR/AppDir/AppRun"
+APPRUNEOF
+chmod +x "$APPDIR/AppRun"
 
-# Download and setup linuxdeploy
+# Download linuxdeploy
 echo "Downloading linuxdeploy..."
 LINUXDEPLOY_URL="https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-${ARCH}.AppImage"
-curl -L -o "$BUILD_DIR/linuxdeploy.AppImage" "$LINUXDEPLOY_URL"
+curl -L --retry 3 -o "$BUILD_DIR/linuxdeploy.AppImage" "$LINUXDEPLOY_URL"
 chmod +x "$BUILD_DIR/linuxdeploy.AppImage"
 
-# Build AppImage
+# Build AppImage (APPIMAGE_EXTRACT_AND_RUN=1 avoids FUSE in CI)
 echo "Building AppImage..."
 cd "$BUILD_DIR"
-LINUXDEPLOY_OUTPUT_VERSION="$VERSION" ./linuxdeploy.AppImage \
+APPIMAGE_EXTRACT_AND_RUN=1 LINUXDEPLOY_OUTPUT_VERSION="$VERSION" \
+    ./linuxdeploy.AppImage \
     --appdir AppDir \
     --output appimage \
-    --desktop-file=AppDir/usr/share/applications/offerings.desktop \
-    --icon-file=AppDir/usr/share/icons/hicolor/scalable/apps/offerings.svg
+    --desktop-file="AppDir/offerings.desktop" \
+    $ICON_ARG
 
-# Move output to dist directory
-mv Offerings-*.AppImage "$OUTPUT_DIR/Offerings-${VERSION}-${ARCH}.AppImage"
-
-echo ""
-echo "=== Build Complete ==="
-echo "AppImage: $OUTPUT_DIR/Offerings-${VERSION}-${ARCH}.AppImage"
-ls -lh "$OUTPUT_DIR/"
+APPIMAGE_FILE=$(ls Offerings-*.AppImage 2>/dev/null | head -1 || ls *.AppImage 2>/dev/null | head -1 || true)
+if [ -n "$APPIMAGE_FILE" ]; then
+    mv "$APPIMAGE_FILE" "$OUTPUT_DIR/Offerings-${VERSION}-${ARCH}.AppImage"
+    echo "=== Build Complete ==="
+    echo "AppImage: $OUTPUT_DIR/Offerings-${VERSION}-${ARCH}.AppImage"
+    ls -lh "$OUTPUT_DIR/"
+else
+    echo "ERROR: No AppImage produced"
+    ls -la
+    exit 1
+fi

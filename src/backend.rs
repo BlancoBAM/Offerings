@@ -610,63 +610,61 @@ impl BackendService {
 
                 // staleness filter: hide truly unmaintained apps from generic browsing
                 // especially in large categories, but keep them in search.
+                let cat_lower = category.to_lowercase();
                 if pkg.is_stale()
-                    && (category == "Miscellaneous"
-                        || category == "Utilities"
-                        || category == "System")
+                    && (cat_lower == "miscellaneous"
+                        || cat_lower == "utilities"
+                        || cat_lower == "system")
                 {
                     return false;
                 }
 
-                if category == "Miscellaneous" {
+                if cat_lower == "miscellaneous" {
                     // Return apps with no categories OR categories not in the main sidebar list
                     if pkg.metadata.categories.is_empty() {
                         return true;
                     }
 
                     let known_categories = vec![
-                        "Audio",
-                        "Video",
-                        "Development",
-                        "Education",
-                        "Game",
-                        "Games",
-                        "Graphics",
-                        "Network",
-                        "Office",
-                        "Science",
-                        "Settings",
-                        "System",
-                        "Utilities",
-                        "AI / Machine Learning",
-                        "Productivity",
-                        "Desktop Customization",
-                        "Security & Privacy",
-                        "Lifestyle",
-                        "Lilith",
-                        "Essentials",
-                        "Trending",
-                        "Communication",
-                        "Chat",
-                        "Browser",
-                        "Browsers",
-                        "Monitor",
-                        "Finance",
-                        "Android",
-                        "Comic",
-                        "Wine",
-                        "Gnome",
-                        "KDE",
-                        "Security",
-                        "Disk",
-                        "Files",
+                        "audio",
+                        "video",
+                        "development",
+                        "education",
+                        "game",
+                        "graphics",
+                        "network",
+                        "office",
+                        "science",
+                        "settings",
+                        "system",
+                        "utilit",
+                        "ai",
+                        "productivity",
+                        "desktop",
+                        "security",
+                        "lifestyle",
+                        "lilith",
+                        "communication",
+                        "chat",
+                        "browser",
+                        "monitor",
+                        "finance",
+                        "android",
+                        "comic",
+                        "wine",
+                        "gnome",
+                        "kde",
+                        "disk",
+                        "file",
+                        "email",
+                        "internet",
                     ];
 
                     !pkg.metadata.categories.iter().any(|c| {
                         let c_lower = c.to_lowercase();
                         known_categories
                             .iter()
-                            .any(|&known| c_lower.contains(&known.to_lowercase()))
+                            .any(|&known| c_lower.contains(known))
                     })
                 } else {
                     let search_terms = match category.to_lowercase().as_str() {
@@ -675,7 +673,7 @@ impl BackendService {
                         }
                         "game" | "games" => vec!["game", "gaming", "steam"],
                         "audio" => vec!["audio", "music", "sound", "player", "recorder"],
-                        "video" => vec!["video", "movie", "player", "editor", "stream"],
+                        "video" => vec!["video", "movie", "mediaplayer", "stream", "multimedia"],
                         "development" => vec![
                             "development",
                             "coding",
@@ -683,12 +681,17 @@ impl BackendService {
                             "programming",
                             "git",
                             "compiler",
+                            "debugger",
+                            "versioncontrol",
                         ],
                         "graphics" => vec![
-                            "graphics", "image", "photo", "drawing", "design", "editor", "paint",
+                            "graphics", "image", "photo", "drawing", "design", "paint",
+                            "illustration", "raster", "vector",
                         ],
                         "network" => {
-                            vec!["network", "internet", "browser", "web", "remote"]
+                            // Intentionally exclude 'browser' and 'internet' here - those have their own categories
+                            // and would incorrectly pull email/browser apps into Network
+                            vec!["network", "remote", "ftp", "ssh", "vpn", "filesharing", "torrent"]
                         }
                         "communication" | "chat" | "social" => vec![
                             "communication",
@@ -701,9 +704,11 @@ impl BackendService {
                             "whatsapp",
                             "signal",
                             "matrix",
+                            "email",
+                            "mail",
                         ],
                         "web-browser" | "browser" | "browsers" => vec![
-                            "browser", "web", "internet", "firefox", "chrome", "chromium", "opera",
+                            "browser", "webbrowser", "firefox", "chrome", "chromium", "opera",
                             "brave", "vivaldi", "epiphany",
                         ],
                         "system-monitor" | "monitor" => vec![
@@ -716,7 +721,6 @@ impl BackendService {
                             "usage",
                             "htop",
                             "btop",
-                            "top",
                         ],
                         "password" | "security" | "security & privacy" => vec![
                             "security",
@@ -739,32 +743,31 @@ impl BackendService {
                         ],
                         "productivity" => vec![
                             "productivity",
-                            "office",
                             "task",
                             "notes",
                             "calendar",
                             "time",
                             "todo",
                             "kanban",
+                            "planner",
                         ],
                         "office" => vec![
                             "office",
                             "document",
                             "spreadsheet",
-                            "word",
+                            "wordprocessor",
                             "writer",
                             "pdf",
-                            "libreoffice",
                         ],
                         "science" => vec![
                             "science",
                             "math",
-                            "calculator",
-                            "lab",
+                            "laboratory",
                             "research",
                             "physics",
                             "biology",
                             "chemistry",
+                            "astronomy",
                         ],
                         "education" => vec![
                             "education",
@@ -778,14 +781,13 @@ impl BackendService {
                         "lifestyle" => vec![
                             "lifestyle",
                             "personal",
-                            "finance",
                             "cooking",
                             "travel",
                             "health",
                             "fitness",
                         ],
                         "system" => vec![
-                            "system", "settings", "os", "kernel", "admin", "config", "tweak",
+                            "system", "settings", "administration", "admin", "config",
                         ],
                         "desktop-customization" | "desktop" => vec![
                             "desktop",
@@ -793,9 +795,6 @@ impl BackendService {
                             "icon",
                             "wallpaper",
                             "shell",
-                            "gnome",
-                            "kde",
-                            "xfce",
                         ],
                         "finance" => vec![
                             "finance",
@@ -806,24 +805,23 @@ impl BackendService {
                             "budget",
                         ],
                         "android" => vec!["android", "mobile", "adb", "scrcpy"],
+                        "lilith" => {
+                            // Lilith packages carry a "Lilith" tag in their categories
+                            // OR are explicitly listed in the curated showcase
+                            vec!["lilith"]
+                        }
                         _ => vec![category],
                     };
 
+                    // Match ONLY on metadata categories — never on name/summary.
+                    // Matching on name/summary caused severe miscategorization:
+                    // "ai" matched "FastMAIL", "GAIa Sky", "KAIdan", "IaIto", etc.
+                    // Category membership is determined solely by FreeDesktop categories metadata.
                     pkg.metadata.categories.iter().any(|c| {
                         let c_lower = c.to_lowercase();
                         search_terms
                             .iter()
                             .any(|&term| c_lower.contains(&term.to_lowercase()))
-                    }) || search_terms.iter().any(|&term| {
-                        pkg.identity
-                            .name
-                            .to_lowercase()
-                            .contains(&term.to_lowercase())
-                            || pkg
-                                .metadata
-                                .summary
-                                .to_lowercase()
-                                .contains(&term.to_lowercase())
                     })
                 }
             })
@@ -846,9 +844,26 @@ impl BackendService {
             result.len()
         );
 
-        // If we don't have enough packages AND it's not Miscellaneous, add featured apps
-        if result.len() < 10 && category != "Miscellaneous" {
-            if let Some(featured_ids) = self.home_content.category_showcases.get(category) {
+        // If we don't have enough packages AND it's not Miscellaneous, add curated showcase packages
+        let cat_lower_fallback = category.to_lowercase();
+        if result.len() < 10 && cat_lower_fallback != "miscellaneous" {
+            // Try both the exact category name and capitalized versions in the showcase map
+            let showcase_key = if cat_lower_fallback == "lilith" { "Lilith" }
+                else if cat_lower_fallback == "game" || cat_lower_fallback == "games" { "Games" }
+                else { category };
+            if let Some(featured_ids) = self.home_content.category_showcases.get(showcase_key) {
+                for id in featured_ids {
+                    if let Some(pkg) = self.get_package(id).await {
+                        if !result.iter().any(|p| p.identity.id == pkg.identity.id) {
+                            result.push(pkg);
+                        }
+                    }
+                }
+            }
+        }
+        // Always add curated showcase packages for Lilith category
+        if cat_lower_fallback == "lilith" {
+            if let Some(featured_ids) = self.home_content.category_showcases.get("Lilith") {
                 for id in featured_ids {
                     if let Some(pkg) = self.get_package(id).await {
                         if !result.iter().any(|p| p.identity.id == pkg.identity.id) {

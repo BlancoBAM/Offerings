@@ -505,9 +505,10 @@ component AppCard inherits Rectangle {
     callback update-clicked(string);
     callback uninstall-clicked(string);
 
-    width: 320px;
+    min-width: 220px;
+    max-width: 380px;
     height: 90px;
-    horizontal-stretch: 0;
+    horizontal-stretch: 1;
     vertical-stretch: 0;
     background: AppColors.bg-secondary;
     border-radius: 8px;
@@ -617,6 +618,7 @@ component HorizontalCategorySection inherits Rectangle {
     callback see-all-clicked();
     callback load-more(string);
     background: transparent;
+    horizontal-stretch: 1;
 
     VerticalLayout {
         spacing: 12px;
@@ -664,28 +666,26 @@ component HorizontalCategorySection inherits Rectangle {
         }
 
         // Grid list (adaptive)
-        HorizontalLayout {
-            GridLayout {
-                spacing: 16px;
-                padding-bottom: 8px;
-                padding-top: 8px;
-                horizontal-stretch: 1;
-                for pkg[idx] in packages: AppCard {
-                    col: mod(idx, root.columns);
-                    row: Math.floor(idx / root.columns);
-                    package: pkg;
-                    clicked => {
-                        root.package-clicked(pkg.id);
-                    }
-                    install-clicked => {
-                        root.install-clicked(pkg.id);
-                    }
-                    open-clicked => {
-                        root.open-clicked(pkg.id);
-                    }
-                    uninstall-clicked => {
-                        root.uninstall-clicked(pkg.id);
-                    }
+        GridLayout {
+            spacing: 16px;
+            padding-bottom: 8px;
+            padding-top: 8px;
+            horizontal-stretch: 1;
+            for pkg[idx] in packages: AppCard {
+                col: mod(idx, root.columns);
+                row: Math.floor(idx / root.columns);
+                package: pkg;
+                clicked => {
+                    root.package-clicked(pkg.id);
+                }
+                install-clicked => {
+                    root.install-clicked(pkg.id);
+                }
+                open-clicked => {
+                    root.open-clicked(pkg.id);
+                }
+                uninstall-clicked => {
+                    root.uninstall-clicked(pkg.id);
                 }
             }
         }
@@ -723,7 +723,7 @@ component HorizontalCategorySection inherits Rectangle {
 component CategorySection inherits Rectangle {
     in property <string> title;
     in property <[PackageInfo]> packages;
-    in property <int> columns: 4;
+    in property <int> columns: 3;
     in property <bool> has_more: false;
     in property <string> category_id;
     callback package-clicked(string);
@@ -732,6 +732,7 @@ component CategorySection inherits Rectangle {
     callback uninstall-clicked(string);
     callback load-more(string);
     background: transparent;
+    horizontal-stretch: 1;
 
     VerticalLayout {
         spacing: 12px;
@@ -753,27 +754,25 @@ component CategorySection inherits Rectangle {
         }
 
         // Package grid - adaptive columns
-        HorizontalLayout {
-            GridLayout {
-                spacing: 16px;
-                padding: 4px;
-                horizontal-stretch: 1;
-                for pkg[idx] in packages: AppCard {
-                    col: mod(idx, root.columns);
-                    row: Math.floor(idx / root.columns);
-                    package: pkg;
-                    clicked => {
-                        root.package-clicked(pkg.id);
-                    }
-                    install-clicked => {
-                        root.install-clicked(pkg.id);
-                    }
-                    open-clicked => {
-                        root.open-clicked(pkg.id);
-                    }
-                    uninstall-clicked => {
-                        root.uninstall-clicked(pkg.id);
-                    }
+        GridLayout {
+            spacing: 16px;
+            padding: 4px;
+            horizontal-stretch: 1;
+            for pkg[idx] in packages: AppCard {
+                col: mod(idx, root.columns);
+                row: Math.floor(idx / root.columns);
+                package: pkg;
+                clicked => {
+                    root.package-clicked(pkg.id);
+                }
+                install-clicked => {
+                    root.install-clicked(pkg.id);
+                }
+                open-clicked => {
+                    root.open-clicked(pkg.id);
+                }
+                uninstall-clicked => {
+                    root.uninstall-clicked(pkg.id);
                 }
             }
         }
@@ -996,9 +995,11 @@ component PackageDetailView inherits Rectangle {
         }
 
         Flickable {
-            viewport-width: 800px;
-            VerticalLayout {
+            viewport-width: self.width;
+            viewport-height: detail-content.preferred-height;
+            detail-content := VerticalLayout {
                 spacing: 40px;
+                padding-bottom: 48px;
                 
                 // Hero Header
                 HorizontalLayout {
@@ -1672,10 +1673,8 @@ export component MainWindow inherits Window {
     background: AppColors.bg-primary;
     preferred-width: 1280px;
     preferred-height: 800px;
-    min-width: 900px;
+    min-width: 800px;
     min-height: 600px;
-    max-width: 1920px;
-    max-height: 1080px;
 
     // Data properties
     in property <[CategoryInfo]> categories;
@@ -1738,8 +1737,8 @@ export component MainWindow inherits Window {
     in property <[DependencyItem]> selected-deps;
     in property <[string]> available-fonts: ["System Default", "Sans", "Serif", "Monospace"];
     in-out property <[SourceItem]> source-urls;
-    // Fixed number of columns to avoid binding loops
-    property <int> grid-columns: 4;
+    // 3 columns fits well in a 1024px window with 220px sidebar (~772px content area)
+    property <int> grid-columns: 3;
 
     // State properties
     in-out property <[PackageInfo]> current-category-packages;
@@ -2078,6 +2077,7 @@ export component MainWindow inherits Window {
                         width: 100%;
                         height: 100%;
                         viewport-width: self.width;
+                        clip: true;
                         
                         VerticalLayout {
                             alignment: start;

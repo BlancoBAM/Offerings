@@ -1550,32 +1550,27 @@ async fn populate_ui_async(ui_weak: &slint::Weak<MainWindow>, backend: &BackendS
         }
     });
 
-    // Start a background smooth progress incrementer
+    // Start a background smooth progress incrementer (2% per 300ms = ~50s to reach 95%)
     let ui_handle_smooth = ui_handle.clone();
     tokio::spawn(async move {
-        let mut p = 0.01;
+        let mut p: f32 = 0.01;
         while p < 0.95 {
-            tokio::time::sleep(tokio::time::Duration::from_millis(250)).await;
-            if let Some(ui) = ui_handle_smooth.upgrade() {
-                // Only increment if we aren't already further ahead
-                let current = ui.get_loading_progress();
-                if current < p + 0.02 {
-                    p += 0.01;
-                    let _ = slint::invoke_from_event_loop({
-                        let ui_handle = ui_handle_smooth.clone();
-                        let new_p = p;
-                        move || {
-                            if let Some(ui) = ui_handle.upgrade() {
-                                if ui.get_loading_progress() < new_p {
-                                    ui.set_loading_progress(new_p);
-                                }
-                            }
+            tokio::time::sleep(tokio::time::Duration::from_millis(300)).await;
+            p = (p + 0.02).min(0.95);
+            let new_p = p;
+            let _ = slint::invoke_from_event_loop({
+                let ui_handle = ui_handle_smooth.clone();
+                move || {
+                    if let Some(ui) = ui_handle.upgrade() {
+                        // Only advance, never go backwards
+                        if ui.get_loading_progress() < new_p {
+                            ui.set_loading_progress(new_p);
                         }
-                    });
-                } else {
-                    p = current;
+                    }
                 }
-            } else {
+            });
+            // Stop if window was closed
+            if ui_handle_smooth.upgrade().is_none() {
                 break;
             }
         }
@@ -1974,9 +1969,11 @@ async fn populate_ui_async(ui_weak: &slint::Weak<MainWindow>, backend: &BackendS
             // Track which package IDs are already assigned to prevent cross-category duplicates
             let mut used_ids: std::collections::HashSet<String> = std::collections::HashSet::new();
 
-            // Helper: filter a category's packages, removing already-assigned ones, and track the new ones
+            // Helper: filter a category's packages, removing already-assigned ones from home page preview
+            // BUT keep the true count from the full package list (not dedup-filtered) for the sidebar badge
             let mut make_cat =
                 |id: &str, name: &str, icon: &str, pkgs: Vec<model::Package>| -> CategoryInfo {
+                    let true_count = pkgs.len() as i32; // Accurate count before home-page dedup
                     let filtered: Vec<model::Package> = pkgs
                         .into_iter()
                         .filter(|p| !used_ids.contains(&p.identity.id))
@@ -1984,14 +1981,13 @@ async fn populate_ui_async(ui_weak: &slint::Weak<MainWindow>, backend: &BackendS
                     for p in &filtered {
                         used_ids.insert(p.identity.id.clone());
                     }
-                    let count = filtered.len() as i32;
                     CategoryInfo {
                         id: id.into(),
                         name: name.into(),
                         icon: icon.into(),
-                        package_count: count,
+                        package_count: true_count, // Show true count in sidebar badge
                         preview_packages: limit_and_convert(filtered.clone(), 12),
-                        has_more: filtered.len() > 12,
+                        has_more: true_count > 12,
                     }
                 };
 
