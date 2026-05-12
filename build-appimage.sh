@@ -36,8 +36,13 @@ chmod +x "$APPDIR/usr/bin/offerings"
 
 # Icon
 if [ -f "assets/icon-logo.png" ]; then
-    cp "assets/icon-logo.png" "$APPDIR/usr/share/icons/hicolor/256x256/apps/offerings.png"
-    cp "assets/icon-logo.png" "$APPDIR/offerings.png"
+    # Resize to exact 256x256 — linuxdeploy requires standard resolutions
+    if command -v convert &>/dev/null; then
+        convert -resize 256x256! "assets/icon-logo.png" "$APPDIR/usr/share/icons/hicolor/256x256/apps/offerings.png"
+    else
+        cp "assets/icon-logo.png" "$APPDIR/usr/share/icons/hicolor/256x256/apps/offerings.png"
+    fi
+    cp "$APPDIR/usr/share/icons/hicolor/256x256/apps/offerings.png" "$APPDIR/offerings.png"
     ICON_ARG="--icon-file=$APPDIR/usr/share/icons/hicolor/256x256/apps/offerings.png"
 else
     cat > "$APPDIR/usr/share/icons/hicolor/scalable/apps/offerings.svg" << 'SVGEOF'
