@@ -1946,10 +1946,11 @@ export component MainWindow inherits Window {
                             SidebarItem {
                                 label: "Lilith";
                                 icon: "😈";
-                                selected: current-view == "home";
+                                selected: current-view == "lilith";
                                 clicked => {
                                     if !is-transitioning {
-                                        current-view = "home";
+                                        current-view = "lilith";
+                                        category-selected("lilith");
                                     }
                                 }
                             }

@@ -98,6 +98,45 @@ export LD_LIBRARY_PATH="${HERE}/usr/lib:${LD_LIBRARY_PATH}"
 if [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ]; then
     export DISPLAY=:0
 fi
+
+# Auto desktop integration on first run
+APPIMAGE_PATH="${APPIMAGE:-${0}}"
+ICON_THEME_DIR="${HOME}/.local/share/icons/hicolor/256x256/apps"
+APP_DIR="${HOME}/.local/share/applications"
+DESKTOP_FILE="${APP_DIR}/offerings.desktop"
+
+if [ ! -f "${DESKTOP_FILE}" ] || ! grep -q "${APPIMAGE_PATH}" "${DESKTOP_FILE}" 2>/dev/null; then
+    mkdir -p "${ICON_THEME_DIR}" "${APP_DIR}"
+
+    # Install icon
+    if [ -f "${HERE}/usr/share/icons/hicolor/256x256/apps/offerings.png" ]; then
+        cp "${HERE}/usr/share/icons/hicolor/256x256/apps/offerings.png" "${ICON_THEME_DIR}/offerings.png"
+    elif [ -f "${HERE}/offerings.png" ]; then
+        cp "${HERE}/offerings.png" "${ICON_THEME_DIR}/offerings.png"
+    fi
+
+    # Refresh icon cache
+    gtk-update-icon-cache -f -t "${HOME}/.local/share/icons/hicolor" 2>/dev/null || true
+
+    # Create desktop entry
+    cat > "${DESKTOP_FILE}" << DESKTOPEOF
+[Desktop Entry]
+Type=Application
+Name=Offerings
+GenericName=App Store
+Comment=Lilith Linux package store — Flatpak, Snap, Homebrew, GitHub Releases, and more
+Exec=${APPIMAGE_PATH} %U
+Icon=offerings
+Categories=System;PackageManager;Settings;
+Keywords=store;install;packages;flatpak;snap;homebrew;
+Terminal=false
+StartupNotify=true
+StartupWMClass=offerings
+DESKTOPEOF
+
+    update-desktop-database "${APP_DIR}" 2>/dev/null || true
+fi
+
 exec "${HERE}/usr/bin/offerings" "$@"
 APPRUNEOF
 chmod +x "$APPDIR/AppRun"

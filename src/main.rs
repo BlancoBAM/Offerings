@@ -1227,14 +1227,19 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
                             // Find category name/icon
                             let (cat_name, cat_icon) = {
-                                let mut res = (category.clone(), "📦".to_string());
-                                for c in ui.get_categories().iter() {
-                                    if c.id == category {
-                                        res = (c.name.to_string(), c.icon.to_string());
-                                        break;
+                                // Handle special pinned categories not in the dynamic list
+                                if category == "lilith" {
+                                    ("Lilith".to_string(), "😈".to_string())
+                                } else {
+                                    let mut res = (category.clone(), "📦".to_string());
+                                    for c in ui.get_categories().iter() {
+                                        if c.id == category {
+                                            res = (c.name.to_string(), c.icon.to_string());
+                                            break;
+                                        }
                                     }
+                                    res
                                 }
-                                res
                             };
 
                             let slint_pkgs = convert_to_slint_packages(initial_packages.clone());
