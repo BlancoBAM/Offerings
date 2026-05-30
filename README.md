@@ -21,7 +21,7 @@
 > [!WARNING]
 > **This is a beta release.** I make no guarantees that the app works as intended at this time, and welcome testing and issues. Please give your feedback! It definitely needs some polish and code cleanup — I'm sure that's not all. This was designed for an upcoming distro named **Lilith Linux**, after the demoness mythology, designed for someone specific and the theming reflects the demonic/satanic-ish theming of the distro. It's built in Rust, as is pretty much everything I write these days, with [Slint](https://slint.dev/) for the GUI.
 
-**Offerings** is a unified GUI interface for easy desktop app management designed for Lilith Linux. It combines multiple package sources into a single, beautiful interface, allowing users to discover, install, and manage applications from Flatpak, Snap, AppImage, SOAR/PkgForge, and GitHub Releases.
+**Offerings** is a unified GUI interface for easy desktop app management designed for Lilith Linux. It combines multiple package sources into a single, beautiful interface, allowing users to discover, install, and manage applications from Flatpak, Snap, AppImage, SOAR/PkgForge, and GitHub Releases. Catalogue of over 9,000 apps!
 
 ## ✨ Features
 
@@ -30,7 +30,7 @@
 - 🛡️ **Lilith Curated Section**: Hand-picked applications specifically chosen for Lilith Linux users.
 - 🔄 **Automated Updates**: Background synchronization ensures you always have the latest versions and package metadata.
 - 🔍 **Powerful Search**: Fuzzy matching across all enabled sources to find exactly what you need.
-- 🗂️ **Smart Categorization**: Automated classification of thousands of apps into intuitive categories.
+- 🗂️ **Smart Categorization**: Automated classification of thousands of apps into intuitive categories. (NEEDS WORK!! As of yet,I haven't taken the time to manually categorize packages, so Qwen automated the process, and surprise, there are errors with a model performing the task. For example, titles containing 'mAIl are placed in the AI tab,and Miscellaneous has 3,000+ apps. Help is more than welcome!
 - ⚡ **Performance First**: Efficient SQLite-backed caching and incremental loading for smooth browsing of massive catalogs.
 
 ## 🚀 Installation
