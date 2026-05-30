@@ -30,7 +30,11 @@
 - 🛡️ **Lilith Curated Section**: Hand-picked applications specifically chosen for Lilith Linux users.
 - 🔄 **Automated Updates**: Background synchronization ensures you always have the latest versions and package metadata.
 - 🔍 **Powerful Search**: Fuzzy matching across all enabled sources to find exactly what you need.
-- 🗂️ **Smart Categorization**: Automated classification of thousands of apps into intuitive categories. (NEEDS WORK!! As of yet,I haven't taken the time to manually categorize packages, so Qwen automated the process, and surprise, there are errors with a model performing the task. For example, titles containing 'mAIl are placed in the AI tab,and Miscellaneous has 3,000+ apps. Help is more than welcome!
+- 🗂️ **Smart Categorization**: Automated classification of thousands of apps into intuitive categories.
+
+>[!NOTE]
+As of yet,I haven't taken the time to manually categorize packages, so Qwen automated the process, and (go figure) there are errors with a model performing the task. For example, titles containing 'mAIl are placed in the AI tab,and Miscellaneous has 3,000+ apps. Help is more than welcome!
+
 - ⚡ **Performance First**: Efficient SQLite-backed caching and incremental loading for smooth browsing of massive catalogs.
 
 ## 🚀 Installation
