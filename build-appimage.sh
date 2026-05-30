@@ -34,6 +34,12 @@ mkdir -p "$APPDIR/usr/share/metainfo"
 cp "target/release/offerings" "$APPDIR/usr/bin/offerings"
 chmod +x "$APPDIR/usr/bin/offerings"
 
+# Bundle the curated catalog alongside the binary so LilithCatalogAdapter finds it
+if [ -f "lilith-curated.toml" ]; then
+    cp "lilith-curated.toml" "$APPDIR/usr/bin/lilith-curated.toml"
+    echo "Bundled lilith-curated.toml into AppDir"
+fi
+
 # Icon
 if [ -f "assets/icon-logo.png" ]; then
     # Resize to exact 256x256 — linuxdeploy requires standard resolutions

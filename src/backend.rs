@@ -349,8 +349,34 @@ impl BackendService {
         self.notifications.clone()
     }
 
+    /// Load all packages from the SQLite database into the in-memory cache.
+    /// This is instant (no network), giving the UI something to display before
+    /// the full network refresh completes. Safe to call concurrently with refresh.
+    pub async fn load_cache_from_db(&self) {
+        match self.db.load_all_packages() {
+            Ok(packages) => {
+                let count = packages.len();
+                if count == 0 {
+                    eprintln!("DB cache warm-up: no packages stored yet (first run?)");
+                    return;
+                }
+                let mut cache = self.package_cache.write().await;
+                for pkg in packages {
+                    let pkg = self.enrich_metadata(pkg);
+                    // Don't overwrite entries that were already refreshed from adapters
+                    cache.entry(pkg.identity.id.clone()).or_insert(pkg);
+                }
+                eprintln!("DB cache warm-up: loaded {} packages", count);
+            }
+            Err(e) => {
+                eprintln!("Warning: Failed to load packages from DB for warm-up: {}", e);
+            }
+        }
+    }
+
     /// Refresh cache from all available adapters
     pub async fn refresh_cache(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+
         let mut cache = self.package_cache.write().await;
         cache.clear();
 
@@ -806,8 +832,8 @@ impl BackendService {
                         ],
                         "android" => vec!["android", "mobile", "adb", "scrcpy"],
                         "lilith" => {
-                            // Lilith packages carry a "Lilith" tag in their categories
-                            // OR are explicitly listed in the curated showcase
+                            // Packages tagged "Lilith" in their metadata categories
+                            // (set by LilithCatalogAdapter on packages it lists)
                             vec!["lilith"]
                         }
                         _ => vec![category],
@@ -829,6 +855,63 @@ impl BackendService {
 
         let mut result = self.deduplicate_packages(matches);
 
+        let cat_lower_fallback = category.to_lowercase();
+
+        // ── Lilith: also look up curated showcase IDs directly from the cache ──
+        // The metadata-tag search above finds packages only once the Lilith adapter
+        // has populated the cache with them. On first run or after a timeout the
+        // in-memory cache might hold the same packages under their primary source ID
+        // (e.g. "flatpak:io.unobserved.espansoGUI") without the "Lilith" tag.
+        // We look them up by ID directly to guarantee results in all cases.
+        if cat_lower_fallback == "lilith" {
+            let cache = self.package_cache.read().await;
+            let showcase_ids: Vec<String> = self
+                .home_content
+                .category_showcases
+                .get("Lilith")
+                .cloned()
+                .unwrap_or_default();
+            for id in &showcase_ids {
+                // Try exact ID match first
+                if let Some(pkg) = cache.get(id) {
+                    if !result.iter().any(|p| p.identity.id == pkg.identity.id) {
+                        result.push(pkg.clone());
+                    }
+                    continue;
+                }
+                // Also try the short ID (the part after the colon prefix)
+                let short = id.split(':').nth(1).unwrap_or(id.as_str());
+                if let Some(pkg) = cache.values().find(|p| {
+                    p.identity.id == *id
+                        || p.identity.id.ends_with(short)
+                        || p.short_id() == short
+                }) {
+                    if !result.iter().any(|p| p.identity.id == pkg.identity.id) {
+                        result.push(pkg.clone());
+                    }
+                }
+            }
+        }
+
+        // ── Generic fallback: if still under 10 results, add showcase packages ──
+        if result.len() < 10 && cat_lower_fallback != "miscellaneous" && cat_lower_fallback != "lilith" {
+            let showcase_key = if cat_lower_fallback == "game" || cat_lower_fallback == "games" {
+                "Games"
+            } else {
+                category
+            };
+            if let Some(featured_ids) = self.home_content.category_showcases.get(showcase_key) {
+                let cache = self.package_cache.read().await;
+                for id in featured_ids {
+                    if let Some(pkg) = cache.get(id) {
+                        if !result.iter().any(|p| p.identity.id == pkg.identity.id) {
+                            result.push(pkg.clone());
+                        }
+                    }
+                }
+            }
+        }
+
         // Wave 15.0: Sort by discovery score (Popularity + Recency + Quality)
         result.sort_by(|a, b| {
             let score_a = self.calculate_discovery_score(a);
@@ -843,36 +926,6 @@ impl BackendService {
             category,
             result.len()
         );
-
-        // If we don't have enough packages AND it's not Miscellaneous, add curated showcase packages
-        let cat_lower_fallback = category.to_lowercase();
-        if result.len() < 10 && cat_lower_fallback != "miscellaneous" {
-            // Try both the exact category name and capitalized versions in the showcase map
-            let showcase_key = if cat_lower_fallback == "lilith" { "Lilith" }
-                else if cat_lower_fallback == "game" || cat_lower_fallback == "games" { "Games" }
-                else { category };
-            if let Some(featured_ids) = self.home_content.category_showcases.get(showcase_key) {
-                for id in featured_ids {
-                    if let Some(pkg) = self.get_package(id).await {
-                        if !result.iter().any(|p| p.identity.id == pkg.identity.id) {
-                            result.push(pkg);
-                        }
-                    }
-                }
-            }
-        }
-        // Always add curated showcase packages for Lilith category
-        if cat_lower_fallback == "lilith" {
-            if let Some(featured_ids) = self.home_content.category_showcases.get("Lilith") {
-                for id in featured_ids {
-                    if let Some(pkg) = self.get_package(id).await {
-                        if !result.iter().any(|p| p.identity.id == pkg.identity.id) {
-                            result.push(pkg);
-                        }
-                    }
-                }
-            }
-        }
 
         result
     }

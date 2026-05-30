@@ -629,55 +629,86 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     eprintln!("Slint UI created and visible!");
 
-    // Set initial loading state
+    // Single authoritative loading state initialization
     ui.set_is_loading(true);
     ui.set_loading_status("Preparing the Offerings...".into());
-    ui.set_loading_progress(0.1);
+    ui.set_loading_progress(0.05);
 
     let backend_clone = backend.clone();
 
-    // Start background tasks for data population
+    // ── Initialization sequence (single path, no racing duplicate) ──────────
     let backend_init = backend.clone();
     let ui_init = ui.as_weak();
     runtime.spawn(async move {
-        // Step 1: Lighting the fires (Refresh Cache)
+        // ── Step 0: DB warm-up (instant, no network) ──────────────────────────
+        // Pre-populate the in-memory cache from SQLite so the UI has data
+        // to display even before any network adapter responds.
         let ui_handle = ui_init.clone();
         let _ = slint::invoke_from_event_loop(move || {
             if let Some(ui) = ui_handle.upgrade() {
-                ui.set_loading_status("Lighting the Fires...".into());
+                ui.set_loading_status("Reading local cache...".into());
+                ui.set_loading_progress(0.1);
+            }
+        });
+        backend_init.load_cache_from_db().await;
+
+        // ── Step 0.5: First paint from DB data ────────────────────────────────
+        // If the DB has packages (i.e. not a brand-new install), populate the
+        // UI immediately so the user sees content right away.
+        let ui_handle = ui_init.clone();
+        let _ = slint::invoke_from_event_loop(move || {
+            if let Some(ui) = ui_handle.upgrade() {
+                ui.set_loading_status("Loading catalogue...".into());
                 ui.set_loading_progress(0.2);
             }
         });
-
-        if let Err(e) = backend_init.refresh_cache().await {
-            eprintln!("Warning: Initial cache refresh failed: {}", e);
-        }
-
-        // Step 1.5: Wave 12.0 Background Update Check
-        backend_init.check_for_updates_background().await;
-
-        // Step 2: Syncing Sources
-        let ui_handle = ui_init.clone();
-        let _ = slint::invoke_from_event_loop(move || {
-            if let Some(ui) = ui_handle.upgrade() {
-                ui.set_loading_status("Syncing Package Sources...".into());
-                ui.set_loading_progress(0.5);
-            }
-        });
-
-        // Step 3: Populating Lists
-        let ui_handle = ui_init.clone();
-        let _ = slint::invoke_from_event_loop(move || {
-            if let Some(ui) = ui_handle.upgrade() {
-                ui.set_loading_status("Preparing the Offerings...".into());
-                ui.set_loading_progress(0.8);
-            }
-        });
-
-        // Final population of all UI data
         populate_ui_async(&ui_init, &backend_init).await;
 
-        // Start background refresh task for ongoing updates (every 30 minutes)
+        // ── Step 1: Network refresh (with timeout for VM/offline safety) ───────
+        let ui_handle = ui_init.clone();
+        let _ = slint::invoke_from_event_loop(move || {
+            if let Some(ui) = ui_handle.upgrade() {
+                ui.set_is_loading(true); // stay in loading state for the network pass
+                ui.set_loading_status("Lighting the Fires...".into());
+                ui.set_loading_progress(0.55);
+            }
+        });
+
+        // 15-second timeout prevents flatpak/AM/snap from blocking startup in
+        // VMs or systems where those tools are unavailable or slow to respond.
+        match tokio::time::timeout(
+            std::time::Duration::from_secs(15),
+            backend_init.refresh_cache(),
+        )
+        .await
+        {
+            Ok(Ok(())) => eprintln!("Initial cache refresh complete."),
+            Ok(Err(e)) => eprintln!("Warning: cache refresh error: {}", e),
+            Err(_) => {
+                eprintln!("Warning: cache refresh timed out after 15s — restoring DB cache.");
+                // refresh_cache() clears the cache at start before re-populating.
+                // If it timed out, the cache may be empty or sparse. Restore from DB
+                // to ensure category browsing still works. or_insert semantics mean
+                // any packages the partial refresh DID fetch won't be overwritten.
+                backend_init.load_cache_from_db().await;
+            }
+        }
+
+
+        // ── Step 1.5: Background update check ─────────────────────────────────
+        backend_init.check_for_updates_background().await;
+
+        // ── Step 2: Final populate with fresh network data ────────────────────
+        let ui_handle = ui_init.clone();
+        let _ = slint::invoke_from_event_loop(move || {
+            if let Some(ui) = ui_handle.upgrade() {
+                ui.set_loading_status("Finalizing the Offerings...".into());
+                ui.set_loading_progress(0.75);
+            }
+        });
+        populate_ui_async(&ui_init, &backend_init).await;
+
+        // ── Start background periodic refresh (every 30 minutes) ──────────────
         let _background_refresh = backend_init.start_background_refresh(1800);
     });
 
@@ -1417,49 +1448,25 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     eprintln!("Offerings is starting event loop!");
     println!("Offerings is running!");
 
-    // Show loading screen initially
-    ui.set_is_loading(true);
-    ui.set_loading_progress(0.0);
-    ui.set_loading_status("Initializing...".into());
-
-    // Set up a one-shot timer to populate data after UI is shown
-    let ui_weak = ui.as_weak();
-    let backend_clone = backend.clone();
-    let timer = slint::Timer::default();
-    timer.start(
+    // ── Hard fallback: guarantee the loading screen is ALWAYS dismissed ────────
+    // If populate_ui_async crashes or the weak reference goes stale, this timer
+    // ensures the user is never stuck on the loading screen indefinitely.
+    let ui_weak_fallback = ui.as_weak();
+    let fallback_timer = slint::Timer::default();
+    fallback_timer.start(
         slint::TimerMode::SingleShot,
-        std::time::Duration::from_millis(100),
+        std::time::Duration::from_secs(90),
         move || {
-            eprintln!("Timer fired, populating UI data...");
-            let ui_weak2 = ui_weak.clone();
-            let backend_clone2 = backend_clone.clone();
-
-            // Show loading state
-            let _ = slint::invoke_from_event_loop({
-                let ui_weak2 = ui_weak2.clone();
-                move || {
-                    if let Some(ui) = ui_weak2.upgrade() {
-                        ui.set_is_loading(true);
-                        ui.set_loading_progress(0.0);
-                        ui.set_loading_status("Loading packages from sources...".into());
-                    }
+            if let Some(ui) = ui_weak_fallback.upgrade() {
+                if ui.get_is_loading() {
+                    eprintln!("Fallback timer: forcing loading screen dismiss after 90s");
+                    ui.set_loading_progress(1.0);
+                    ui.set_is_loading(false);
                 }
-            });
-
-            // Use std::thread for async work, then invoke_from_event_loop for UI updates
-            std::thread::spawn(move || {
-                // Create a new runtime for this thread
-                let rt = tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                    .unwrap();
-                rt.block_on(async move {
-                    populate_ui_async(&ui_weak2, &backend_clone2).await;
-                });
-            });
+            }
         },
     );
-    eprintln!("Timer started for UI population");
+    eprintln!("Fallback dismiss timer armed (90s).");
 
     // Run the UI - this will block until the window is closed
     // Async tasks will update the UI via invoke_from_event_loop
@@ -1540,43 +1547,19 @@ async fn populate_ui_async(ui_weak: &slint::Weak<MainWindow>, backend: &BackendS
 
     eprintln!("Loading category packages...");
 
-    // Use a timer-based smooth progress that completes as categories load
-    let ui_handle_timer = ui_handle.clone();
-
-    // Initial state
+    // Set loading state at start of each populate pass.
+    // Progress milestones are updated inline as each async step completes,
+    // so there is no separate smooth-timer that can be orphaned or lost
+    // when this runs on a temporary runtime thread.
     let _ = slint::invoke_from_event_loop({
-        let ui_handle = ui_handle_timer.clone();
+        let ui_handle = ui_handle.clone();
         move || {
             if let Some(ui) = ui_handle.upgrade() {
                 ui.set_is_loading(true);
-                ui.set_loading_progress(0.01);
-                ui.set_loading_status("Preparing the Offerings...".into());
-            }
-        }
-    });
-
-    // Start a background smooth progress incrementer (2% per 300ms = ~50s to reach 95%)
-    let ui_handle_smooth = ui_handle.clone();
-    tokio::spawn(async move {
-        let mut p: f32 = 0.01;
-        while p < 0.95 {
-            tokio::time::sleep(tokio::time::Duration::from_millis(300)).await;
-            p = (p + 0.02).min(0.95);
-            let new_p = p;
-            let _ = slint::invoke_from_event_loop({
-                let ui_handle = ui_handle_smooth.clone();
-                move || {
-                    if let Some(ui) = ui_handle.upgrade() {
-                        // Only advance, never go backwards
-                        if ui.get_loading_progress() < new_p {
-                            ui.set_loading_progress(new_p);
-                        }
-                    }
+                // Only advance from where we already are, never go backwards
+                if ui.get_loading_progress() < 0.25 {
+                    ui.set_loading_progress(0.25);
                 }
-            });
-            // Stop if window was closed
-            if ui_handle_smooth.upgrade().is_none() {
-                break;
             }
         }
     });
@@ -1946,9 +1929,23 @@ async fn populate_ui_async(ui_weak: &slint::Weak<MainWindow>, backend: &BackendS
 
     let cat_settings = backend.get_apps_by_category("Settings").await;
 
+    // All async fetches complete — advance progress to 90% before final paint
+    let _ = slint::invoke_from_event_loop({
+        let ui_handle = ui_handle.clone();
+        move || {
+            if let Some(ui) = ui_handle.upgrade() {
+                ui.set_loading_status("Almost there...".into());
+                if ui.get_loading_progress() < 0.9 {
+                    ui.set_loading_progress(0.9);
+                }
+            }
+        }
+    });
+
     // Final update
     let _ = slint::invoke_from_event_loop(move || {
         if let Some(ui) = ui_handle.upgrade() {
+
             ui.set_featured_audio(limit_and_convert(featured_audio.clone(), 12));
             ui.set_featured_video(limit_and_convert(featured_video.clone(), 12));
             ui.set_featured_development(limit_and_convert(featured_dev.clone(), 12));

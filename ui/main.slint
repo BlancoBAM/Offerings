@@ -2090,7 +2090,96 @@ export component MainWindow inherits Window {
                             if current-view == "home": VerticalLayout {
                                 alignment: start;
                                 spacing: 16px;
-                                
+
+                                // ── Lilith Curated Hero Section ─────────────────────────────
+                                if featured-lilith.length > 0: Rectangle {
+                                    border-radius: 12px;
+                                    background: @linear-gradient(135deg, #1a0033 0%, #2d0055 40%, #1a003388 100%);
+                                    border-width: 1px;
+                                    border-color: #7c3aed44;
+                                    clip: true;
+
+                                    VerticalLayout {
+                                        padding: 20px;
+                                        spacing: 12px;
+
+                                        // Hero header row
+                                        HorizontalLayout {
+                                            spacing: 12px;
+                                            alignment: start;
+
+                                            VerticalLayout {
+                                                alignment: center;
+                                                Text {
+                                                    text: "😈";
+                                                    font-size: 28px;
+                                                }
+                                            }
+
+                                            VerticalLayout {
+                                                spacing: 2px;
+                                                alignment: center;
+                                                horizontal-stretch: 1;
+
+                                                Text {
+                                                    text: "Lilith Curated";
+                                                    color: #c084fc;
+                                                    font-size: 18px;
+                                                    font-weight: 800;
+                                                }
+                                                Text {
+                                                    text: "Hand-picked apps for the Lilith Linux experience";
+                                                    color: #a78bfa88;
+                                                    font-size: 12px;
+                                                }
+                                            }
+
+                                            // See All button
+                                            Rectangle {
+                                                width: 90px;
+                                                height: 32px;
+                                                border-radius: 16px;
+                                                background: #7c3aed;
+                                                states [
+                                                    hovered when lilith-hero-ta.has-hover: {
+                                                        background: #9d5cf0;
+                                                    }
+                                                ]
+                                                lilith-hero-ta := TouchArea {
+                                                    clicked => {
+                                                        root.current-view = "lilith";
+                                                        root.category-selected("lilith");
+                                                    }
+                                                }
+                                                Text {
+                                                    text: "See All →";
+                                                    color: #ffffff;
+                                                    font-size: 12px;
+                                                    font-weight: 600;
+                                                    horizontal-alignment: center;
+                                                    vertical-alignment: center;
+                                                }
+                                            }
+                                        }
+
+                                        // Package grid row
+                                        HorizontalCategorySection {
+                                            title: "";
+                                            packages: root.featured-lilith;
+                                            columns: root.grid-columns;
+                                            has-more: false;
+                                            package-clicked(id) => { root.package-clicked(id); }
+                                            install-clicked(id) => { root.install-clicked(id); }
+                                            open-clicked(id) => { root.open-clicked(id); }
+                                            uninstall-clicked(id) => { root.uninstall-clicked(id); }
+                                            see-all-clicked => {
+                                                root.current-view = "lilith";
+                                                root.category-selected("lilith");
+                                            }
+                                        }
+                                    }
+                                }
+
                                 // Dynamic Categories from Backend (Includes all 20+ categories dynamically)
                                 for cat in categories : HorizontalCategorySection {
                                     title: cat.icon + " " + cat.name;

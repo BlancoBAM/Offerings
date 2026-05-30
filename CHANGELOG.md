@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2026-05-30
+
+### 🐛 Critical Fixes
+
+- **Loading screen stuck at 3%**: Eliminated the duplicate initialization path (timer → thread → throwaway Tokio runtime) that raced against the main init and reset `loading_progress` to 0. The orphaned smooth-progress `tokio::spawn` timer now replaced with real milestone updates.
+- **All categories showing 0 packages on click**: `refresh_cache()` clears the cache before re-populating. When the 15-second timeout fired, the cache was left empty. Fixed by calling `load_cache_from_db()` immediately after any timeout to restore all previously-cached packages from SQLite.
+- **Lilith tab empty and non-navigating**: `get_apps_by_category("Lilith")` now does a direct in-memory cache lookup by the curated showcase IDs instead of dispatching to live network adapters.
+- **`lilith-curated.toml` never read**: `LilithCatalogAdapter` was hardcoded to `vec![]`. Complete rewrite — now actually parses the curated TOML file from the binary directory, CWD, or data dir, mapping Flathub/Snapcraft/GitHub URLs to package IDs.
+
+### ✨ New Features
+
+- **Lilith hero section on home page**: A deep-purple gradient banner now appears at the top of the home view showing curated Lilith packages with a "See All →" button.
+- **DB warm-up on startup**: Packages are pre-loaded from SQLite before any network call, giving instant content on launch even in VMs or offline environments.
+- **15-second refresh timeout**: `refresh_cache()` now has a hard 15-second timeout so unavailable adapters (flatpak remotes, snap, etc.) cannot block startup indefinitely in VMs.
+- **90-second hard fallback**: A failsafe Slint timer forces the loading screen to dismiss after 90 seconds even if the populate task crashes.
+- **Startup progress milestones**: Progress advances through defined steps (5% → 10% → 20% → 55% → 75% → 90% → 100%) instead of relying on a fragile background timer.
+
+### 🔧 Technical
+
+- Added `Database::load_all_packages()` in `db.rs`
+- Added `BackendService::load_cache_from_db()` in `backend.rs`
+- `get_apps_by_category` fallback now reads the in-memory cache directly (no adapter network calls) for the Lilith showcase IDs
+- Repo cleanup: `.claude/`, `.cursor/`, `.kilocode/`, `.vibecheck/`, dev scripts added to `.gitignore`
+
 ## [1.0.1-beta] - 2026-03-31
 
 ### 🎉 Production Release Preparation

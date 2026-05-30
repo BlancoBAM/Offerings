@@ -1,6 +1,6 @@
 [package]
 name = "offerings"
-version = "1.1.0"
+version = "1.2.0"
 edition = "2021"
 description = "A unified GUI interface for easy desktop app management designed for Lilith Linux"
 authors = ["BlancoBAM"]
@@ -71,6 +71,7 @@ assets = [
     ["target/release/offerings", "usr/bin/offerings", "755"],
     ["assets/icon-logo.png", "usr/share/icons/hicolor/256x256/apps/offerings.png", "644"],
     ["offerings.desktop", "usr/share/applications/offerings.desktop", "644"],
+    ["lilith-curated.toml", "usr/share/offerings/lilith-curated.toml", "644"],
 ]
 
 [package.metadata.generate-rpm]

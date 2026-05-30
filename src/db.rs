@@ -337,6 +337,26 @@ impl Database {
         conn.query_row("SELECT COUNT(*) FROM packages", [], |row| row.get(0))
     }
 
+    /// Load all packages from the database (used for offline/startup cache warm-up)
+    pub fn load_all_packages(&self) -> SqliteResult<Vec<Package>> {
+        let conn = self.conn.lock().unwrap();
+
+        let mut stmt = conn.prepare(
+            "SELECT id, name, source, summary, description, icon_url, homepage_url,
+             documentation_url, categories, screenshots, rating, installed_version,
+             latest_version, is_installed, logical_app_id, last_updated, popularity
+             FROM packages
+             ORDER BY is_installed DESC, popularity DESC, last_updated DESC",
+        )?;
+
+        let packages = stmt
+            .query_map([], |row| self.row_to_package(row))?
+            .filter_map(|r| r.ok())
+            .collect();
+
+        Ok(packages)
+    }
+
     /// Clear all packages from cache (used before refresh)
     pub fn clear_packages_by_source(&self, source: PackageSource) -> SqliteResult<()> {
         let conn = self.conn.lock().unwrap();

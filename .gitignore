@@ -2,6 +2,24 @@
 /target/
 **/*.rs.bk
 
+# AI / IDE tool directories (never commit these)
+.claude/
+.cursor/
+.kilocode/
+.vibecheck/
+.github/copilot-instructions.md
+CLAUDE.md
+
+# Dev-only helper scripts
+check_ci.py
+create_tag.py
+push_script.py
+push_v2.py
+do_release.sh
+
+# Local workflow docs (not part of the product)
+workflows/
+
 # IDE/Editor
 .idea/
 .vscode/
