@@ -96,6 +96,29 @@ Huge thanks go to these projects and developers, first and foremost:
 > [!TIP]
 > If Offerings isn't for you (it was designed for a single user along with a distro for the same single user), I'm sure one of the above will more than satisfy what you're looking for — and probably much better and more completely. Check them out! This was a hobby project and labor of love, and practice as I transition from pentesting to development.
 
+
+## ⚠️ Known Limitations
+
+### Packages Installed Outside of Offerings
+
+Offerings **cannot uninstall or manage packages that were installed before Offerings, or installed via another tool** (e.g., `apt install`, COSMIC Store, or downloaded `.deb` files). If you try to remove such a package from the "Installed" tab, you may see an error like *"application cannot be removed"* even though it disappears from the list temporarily.
+
+**Workaround:** Use COSMIC Store (pre-installed on Lilith Linux) or the terminal to manage packages installed outside Offerings:
+
+```bash
+sudo apt remove <package-name>
+# or
+flatpak uninstall <app-id>
+```
+
+### Installing `.deb` or `.AppImage` Files Directly
+
+Offerings does not support installing local `.deb` or `.AppImage` files via the GUI. For that, use **COSMIC Store** (pre-installed on Lilith Linux), which supports opening local packages.
+
+### App Applets and DE Integration
+
+COSMIC panel applets are not currently listed in Offerings. Use COSMIC Store or install them manually — this is a planned future addition.
+
 ## 🏗️ Project Structure
 
 | Path | Description |
