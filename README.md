@@ -39,32 +39,28 @@ As of yet,I haven't taken the time to manually categorize packages, so Qwen auto
 
 ## 🚀 Installation
 
-### AppImage (Recommended)
+### Binary (Recommended)
 
-The easiest way to use Offerings on any Linux distribution:
+Download the latest pre-built binary from the [Releases page](https://github.com/BlancoBAM/Offerings/releases/latest):
 
 ```bash
-wget https://github.com/BlancoBAM/Offerings/releases/latest/download/Offerings-x86_64.AppImage
-chmod +x Offerings-x86_64.AppImage
-./Offerings-x86_64.AppImage
+wget https://github.com/BlancoBAM/Offerings/releases/latest/download/offerings-linux-amd64
+sudo install -m 0755 offerings-linux-amd64 /usr/local/bin/offerings
 ```
 
 ### From Source
 
-Ensure you have the Rust toolchain and Slint dependencies installed:
-
 ```bash
+# Clone the repository
 git clone https://github.com/BlancoBAM/Offerings.git
 cd Offerings
-cargo build --release
-./target/release/offerings
+
+# Run the install script (handles deps, build, and desktop integration)
+bash install.sh
 ```
 
-### Via Cargo
-
-```bash
-cargo install offerings
-```
+> **Note:** The `cargo install offerings` and AppImage methods are not currently supported.
+> Use the binary download or build from source via `install.sh`.
 
 ## 🛠️ Configuration for Developers
 

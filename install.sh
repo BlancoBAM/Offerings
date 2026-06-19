@@ -1,78 +1,87 @@
-#!/bin/bash
-# Offerings App Store Installer
-# Deploys the release binary, icon, and desktop launcher so the app appears
-# in the application menu immediately after install.
+#!/usr/bin/env bash
+# Offerings — Install Script
+# Builds from source and installs system-wide.
+set -euo pipefail
 
-set -e
+BOLD='\033[1m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+RED='\033[0;31m'
+NC='\033[0m'
 
-PROJECT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-BIN_DIR="$HOME/.local/bin"
-APP_DIR="$HOME/.local/share/applications"
-ICON_THEME_DIR="$HOME/.local/share/icons/hicolor"
+info()  { echo -e "${GREEN}[✓]${NC} $*"; }
+warn()  { echo -e "${YELLOW}[!]${NC} $*"; }
+error() { echo -e "${RED}[✗]${NC} $*"; exit 1; }
+step()  { echo -e "\n${BOLD}${CYAN}▶ $*${NC}"; }
 
-echo "🚀 Installing Offerings App Store..."
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# 1. Ensure directories exist
-mkdir -p "$BIN_DIR"
-mkdir -p "$APP_DIR"
-mkdir -p "$ICON_THEME_DIR/256x256/apps"
-mkdir -p "$ICON_THEME_DIR/scalable/apps"
-
-# 2. Check for release binary
-RELEASE_BIN="$PROJECT_DIR/target/release/offerings"
-if [ ! -f "$RELEASE_BIN" ]; then
-    echo "❌ Error: Release binary not found at $RELEASE_BIN"
-    echo "Please run 'cargo build --release' first."
-    exit 1
-fi
-
-# 3. Copy binary
-echo "📦 Copying binary to $BIN_DIR/offerings..."
-cp "$RELEASE_BIN" "$BIN_DIR/offerings"
-chmod +x "$BIN_DIR/offerings"
-
-# 4. Install icon to hicolor theme directory (standard name resolution)
-ICON_SRC="$PROJECT_DIR/assets/icon-logo.png"
-if [ -f "$ICON_SRC" ]; then
-    echo "🖼️  Installing icon..."
-    # Resize to 256x256 if ImageMagick is available
-    if command -v convert &>/dev/null; then
-        convert -resize 256x256! "$ICON_SRC" "$ICON_THEME_DIR/256x256/apps/offerings.png"
-    else
-        cp "$ICON_SRC" "$ICON_THEME_DIR/256x256/apps/offerings.png"
+step "Installing build dependencies..."
+NEEDED=(pkg-config libfontconfig1-dev libssl-dev build-essential)
+MISSING=()
+for dep in "${NEEDED[@]}"; do
+    if ! dpkg -s "$dep" &>/dev/null 2>&1; then
+        MISSING+=("$dep")
     fi
-    # Also copy SVG placeholder as scalable fallback if only PNG exists
-    cp "$ICON_THEME_DIR/256x256/apps/offerings.png" "$ICON_THEME_DIR/scalable/apps/offerings.png" 2>/dev/null || true
+done
+if [ ${#MISSING[@]} -gt 0 ]; then
+    info "Installing: ${MISSING[*]}"
+    sudo apt-get install -y "${MISSING[@]}" || \
+        warn "apt-get failed — ensure ${MISSING[*]} are installed manually"
+else
+    info "All build dependencies present"
 fi
 
-# 5. Update icon cache so the desktop environment resolves "offerings" by name
-if command -v gtk-update-icon-cache &>/dev/null; then
-    gtk-update-icon-cache -f -t "$ICON_THEME_DIR" 2>/dev/null || true
+if ! command -v cargo &>/dev/null; then
+    error "Rust/Cargo not found. Install from https://rustup.rs"
 fi
-if command -v update-icon-caches &>/dev/null; then
-    update-icon-caches "$ICON_THEME_DIR" 2>/dev/null || true
+info "Rust $(rustc --version | cut -d' ' -f2) found"
+
+step "Building Offerings from source..."
+cd "$SCRIPT_DIR"
+cargo build --release
+if [[ ! -f "target/release/offerings" ]]; then
+    error "Build failed — binary not found at target/release/offerings"
+fi
+info "Build complete"
+
+step "Installing binary to /usr/local/bin/..."
+sudo install -m 0755 target/release/offerings /usr/local/bin/offerings
+info "Binary installed: /usr/local/bin/offerings"
+
+step "Installing icon and desktop entry..."
+ICON_SRC="$SCRIPT_DIR/assets/icon-logo.png"
+if [[ -f "$ICON_SRC" ]]; then
+    sudo mkdir -p /usr/share/pixmaps
+    sudo cp "$ICON_SRC" /usr/share/pixmaps/offerings.png
+    info "Icon installed"
 fi
 
-# 6. Create/Update desktop file using the standard icon name (no hardcoded paths)
-echo "🖥️  Updating desktop launcher..."
-cat <<EOF > "$APP_DIR/offerings.desktop"
+sudo tee /usr/share/applications/offerings.desktop > /dev/null << 'DESKTOP'
 [Desktop Entry]
 Type=Application
 Name=Offerings
 GenericName=App Store
-Comment=Lilith Linux package store — Flatpak, Snap, Homebrew, GitHub Releases, and more
-Exec=$BIN_DIR/offerings %U
+Comment=Unified app store for Lilith Linux
+Exec=offerings
 Icon=offerings
-Categories=System;PackageManager;Settings;
-Keywords=store;install;packages;flatpak;snap;homebrew;
+Categories=System;PackageManager;
 Terminal=false
 StartupNotify=true
-StartupWMClass=offerings
-EOF
+DESKTOP
 
-# 7. Refresh desktop database
-if command -v update-desktop-database >/dev/null 2>&1; then
-    update-desktop-database "$APP_DIR"
+if command -v update-desktop-database &>/dev/null; then
+    sudo update-desktop-database /usr/share/applications 2>/dev/null || true
+fi
+if command -v gtk-update-icon-cache &>/dev/null; then
+    sudo gtk-update-icon-cache /usr/share/icons/hicolor 2>/dev/null || true
 fi
 
-echo "✅ Installation complete! You can now launch Offerings from your application menu."
+echo ""
+echo -e "${GREEN}${BOLD}╔══════════════════════════════════════╗${NC}"
+echo -e "${GREEN}${BOLD}║   Offerings installed successfully!  ║${NC}"
+echo -e "${GREEN}${BOLD}╚══════════════════════════════════════╝${NC}"
+echo ""
+echo "  Run: offerings"
+echo "  Or find 'Offerings' in your application menu."
