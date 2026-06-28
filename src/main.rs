@@ -5,6 +5,7 @@ mod backend;
 mod catalog;
 mod db;
 mod ipc;
+mod local_pkg;
 mod model;
 mod notifications;
 mod transaction;
@@ -220,6 +221,8 @@ enum CliCommand {
     ImportCatalog(PathBuf),
     RefreshAndExport(PathBuf),
     SelfTest,
+    /// Open Offerings UI pre-loaded with a local package file (deb/AppImage/flatpak/snap)
+    OpenLocalPackage(PathBuf),
 }
 
 fn cli_usage() -> &'static str {
@@ -258,7 +261,16 @@ where
             Ok(CliCommand::RefreshAndExport(path))
         }
         Some("--self-test") => Ok(CliCommand::SelfTest),
-        Some(other) => Err(format!("Unknown argument: {}. {}", other, cli_usage()).into()),
+        Some(arg) => {
+            // Check if this looks like a local package file (or file:// URI)
+            if local_pkg::is_package_file_arg(arg) {
+                if let Some(path) = local_pkg::parse_file_arg(arg) {
+                    return Ok(CliCommand::OpenLocalPackage(path));
+                }
+            }
+            // Unknown flag or path that doesn't exist
+            Err(format!("Unknown argument: {}. {}", arg, cli_usage()).into())
+        }
     }
 }
 
@@ -609,6 +621,139 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         }
         CliCommand::SelfTest => {
             run_self_test(&runtime, &backend)?;
+            return Ok(());
+        }
+        CliCommand::OpenLocalPackage(path) => {
+            // Parse the package file metadata before creating the UI
+            let mut local_pkg = local_pkg::LocalPackage::from_path(&path)
+                .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { e.into() })?;
+            local_pkg.check_installed();
+
+            eprintln!(
+                "Opening local package: {} ({}) — installed: {}",
+                local_pkg.name, local_pkg.pkg_type.label(), local_pkg.is_installed
+            );
+
+            // Create UI and show local package details right away.
+            // We re-use the PackageInfo Slint struct so the existing detail
+            // panel renders without any Slint UI changes.
+            eprintln!("Creating Slint UI for local package...");
+            let ui = MainWindow::new()?;
+
+            let pkg_info = PackageInfo {
+                id: local_pkg.path.to_string_lossy().to_string().into(),
+                name: local_pkg.name.clone().into(),
+                summary: local_pkg.summary.clone().into(),
+                source: local_pkg.pkg_type.source_label().into(),
+                installed_version: local_pkg.version.clone().into(),
+                latest_version: local_pkg.version.clone().into(),
+                has_update: false,
+                is_installed: local_pkg.is_installed,
+                icon_url: String::new().into(),
+                rating: 0.0,
+                description: local_pkg.description.clone().into(),
+                install_date: 0,
+                alternatives: slint::ModelRc::new(slint::VecModel::from(Vec::new())),
+                tags: slint::ModelRc::new(slint::VecModel::from(Vec::new())),
+                screenshots: slint::ModelRc::new(slint::VecModel::from(Vec::new())),
+                homepage_url: local_pkg.homepage.clone().into(),
+                logical_id: String::new().into(),
+                icon: slint::Image::default(),
+            };
+
+            // Show the package detail panel immediately
+            ui.set_selected_package(pkg_info.clone());
+            ui.set_show_package_detail(true);
+            ui.set_is_loading(false);
+
+            // Set empty collections for the rest of the UI
+            let empty_model = slint::ModelRc::new(slint::VecModel::from(Vec::<PackageInfo>::new()));
+            ui.set_featured_audio(empty_model.clone());
+            ui.set_featured_video(empty_model.clone());
+            ui.set_featured_development(empty_model.clone());
+            ui.set_featured_education(empty_model.clone());
+            ui.set_featured_game(empty_model.clone());
+            ui.set_featured_graphics(empty_model.clone());
+            ui.set_featured_network(empty_model.clone());
+            ui.set_featured_office(empty_model.clone());
+            ui.set_featured_science(empty_model.clone());
+            ui.set_featured_settings(empty_model.clone());
+            ui.set_featured_system(empty_model.clone());
+            ui.set_featured_utilities(empty_model.clone());
+            ui.set_featured_lilith(empty_model.clone());
+            ui.set_featured_essentials(empty_model.clone());
+            ui.set_featured_trending(empty_model.clone());
+            ui.set_installed_packages(empty_model.clone());
+            ui.set_recently_updated(empty_model.clone());
+            ui.set_selected_deps(slint::ModelRc::new(slint::VecModel::from(Vec::new())));
+            ui.set_source_urls(slint::ModelRc::new(slint::VecModel::from(Vec::new())));
+
+            // Wire install button for local package
+            let local_path = path.clone();
+            let local_pkg_type = local_pkg.pkg_type.clone();
+            let ui_weak = ui.as_weak();
+            // Pre-extract the data we need to pass across thread boundaries (all Send types)
+            let pkg_name_str = local_pkg.name.clone();
+            let pkg_version_str = local_pkg.version.clone();
+            let pkg_summary_str = local_pkg.summary.clone();
+            let pkg_desc_str = local_pkg.description.clone();
+            let pkg_homepage_str = local_pkg.homepage.clone();
+            let pkg_source_str = local_pkg.pkg_type.source_label().to_string();
+            ui.on_install_clicked(move |_pkg_id| {
+                let (cmd, args) = local_pkg_type.install_command(&local_path);
+                let ui_handle = ui_weak.clone();
+                // Clone the Send-safe strings for the thread
+                let name = pkg_name_str.clone();
+                let version = pkg_version_str.clone();
+                let summary = pkg_summary_str.clone();
+                let desc = pkg_desc_str.clone();
+                let homepage = pkg_homepage_str.clone();
+                let source = pkg_source_str.clone();
+                std::thread::spawn(move || {
+                    let status = std::process::Command::new(&cmd).args(&args).status();
+                    let _ = slint::invoke_from_event_loop(move || {
+                        if let Some(ui) = ui_handle.upgrade() {
+                            match status {
+                                Ok(s) if s.success() => {
+                                    ui.set_loading_status("Package installed successfully!".into());
+                                    // Reconstruct the PackageInfo on the main thread (not Send)
+                                    let updated = PackageInfo {
+                                        id: name.clone().into(),
+                                        name: name.clone().into(),
+                                        summary: summary.clone().into(),
+                                        source: source.clone().into(),
+                                        installed_version: version.clone().into(),
+                                        latest_version: version.clone().into(),
+                                        has_update: false,
+                                        is_installed: true,
+                                        icon_url: String::new().into(),
+                                        rating: 0.0,
+                                        description: desc.clone().into(),
+                                        install_date: 0,
+                                        alternatives: slint::ModelRc::new(slint::VecModel::from(Vec::new())),
+                                        tags: slint::ModelRc::new(slint::VecModel::from(Vec::new())),
+                                        screenshots: slint::ModelRc::new(slint::VecModel::from(Vec::new())),
+                                        homepage_url: homepage.clone().into(),
+                                        logical_id: String::new().into(),
+                                        icon: slint::Image::default(),
+                                    };
+                                    ui.set_selected_package(updated);
+                                }
+                                Ok(s) => {
+                                    ui.set_loading_status(
+                                        format!("Installation failed (exit {:?})", s.code()).into(),
+                                    );
+                                }
+                                Err(e) => {
+                                    ui.set_loading_status(format!("Error: {}", e).into());
+                                }
+                            }
+                        }
+                    });
+                });
+            });
+
+            ui.run()?;
             return Ok(());
         }
     }

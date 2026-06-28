@@ -2,11 +2,16 @@
 Type=Application
 Name=Offerings
 GenericName=App Store
-Comment=Lilith Linux package store — Flatpak, Snap, Homebrew, GitHub Releases, and more
+Comment=Lilith Linux package store — Flatpak, Snap, AppImage, Deb, and more
 Exec=offerings %U
 Icon=offerings
 Categories=System;PackageManager;Settings;
-Keywords=store;install;packages;flatpak;snap;homebrew;
+Keywords=store;install;packages;flatpak;snap;appimage;deb;
 Terminal=false
 StartupNotify=true
 StartupWMClass=offerings
+MimeType=application/vnd.debian.binary-package;application/x-debian-package;application/x-appimage;application/vnd.flatpak;application/x-flatpak;application/vnd.snap;application/x-snap;
+
+[Desktop Action OpenLocalPackage]
+Name=Open Local Package
+Exec=offerings %f

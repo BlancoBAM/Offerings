@@ -63,12 +63,19 @@ sudo tee /usr/share/applications/offerings.desktop > /dev/null << 'DESKTOP'
 Type=Application
 Name=Offerings
 GenericName=App Store
-Comment=Unified app store for Lilith Linux
-Exec=offerings
+Comment=Lilith Linux package store — Flatpak, Snap, AppImage, Deb, and more
+Exec=offerings %U
 Icon=offerings
-Categories=System;PackageManager;
+Categories=System;PackageManager;Settings;
+Keywords=store;install;packages;flatpak;snap;appimage;deb;
 Terminal=false
 StartupNotify=true
+StartupWMClass=offerings
+MimeType=application/vnd.debian.binary-package;application/x-debian-package;application/x-appimage;application/vnd.flatpak;application/x-flatpak;application/vnd.snap;application/x-snap;
+
+[Desktop Action OpenLocalPackage]
+Name=Open Local Package
+Exec=offerings %f
 DESKTOP
 
 if command -v update-desktop-database &>/dev/null; then
@@ -78,6 +85,23 @@ if command -v gtk-update-icon-cache &>/dev/null; then
     sudo gtk-update-icon-cache /usr/share/icons/hicolor 2>/dev/null || true
 fi
 
+# Register Offerings as the handler for local package file types
+step "Registering MIME type associations..."
+MIME_TYPES=(
+    "application/vnd.debian.binary-package"
+    "application/x-debian-package"
+    "application/x-appimage"
+    "application/vnd.flatpak"
+    "application/x-flatpak"
+    "application/vnd.snap"
+    "application/x-snap"
+)
+for mime in "${MIME_TYPES[@]}"; do
+    if command -v xdg-mime &>/dev/null; then
+        xdg-mime default offerings.desktop "$mime" 2>/dev/null || true
+    fi
+done
+info "MIME associations registered (double-click .deb/.AppImage/.flatpak/.snap to open in Offerings)"
 echo ""
 echo -e "${GREEN}${BOLD}╔══════════════════════════════════════╗${NC}"
 echo -e "${GREEN}${BOLD}║   Offerings installed successfully!  ║${NC}"
