@@ -182,6 +182,18 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 
 Contributions are welcome! Please feel free to submit a Pull Request or open an issue for bug reports and feature requests.
 
+## 🗺️ Planned / Upcoming
+
+The improvements below are planned for upcoming releases, in rough priority order:
+
+1. **Search & loading UX polish** — loading skeletons instead of bare "Fetching featured apps…" strips, and a dedicated error banner with a Retry button so source errors (e.g. Flatpak's "multiple installations" message) never leak into the UI.
+2. **First-run experience** — a short onboarding flow (enable sources, featured showcase) plus persistence for window size and position between sessions.
+3. **AppStream-grade data** — some catalogue descriptions arrive truncated mid-sentence; trim trailing headings and fetch complete descriptions from Flathub's AppStream data.
+4. **Batch updates** — an explicit "Check for updates" action plus an "Update all" button in the Installed view; update badges exist today, but a bulk action is table stakes for a store.
+5. **Packaging polish** — ship an AppStream metainfo file (screenshots, release notes) alongside the AppImage, and add a desktop-file `TryExec` so launchers can validate installs.
+6. **Crash safety & observability** — write panic backtraces to `~/.local/share/offerings/panic.log` and show a friendly restart dialog, making beta feedback much easier to act on.
+7. **i18n scaffolding** — extract UI strings through Slint's gettext support; RTL-safe layouts matter since the catalogue already ships apps with names in Hebrew, Arabic, and other scripts.
+
 ---
 
 <div align="center">
