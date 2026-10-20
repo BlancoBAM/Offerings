@@ -1,8 +1,5 @@
 // src/adapters/flatpak.rs - Flatpak Package Manager Adapter
-use super::{
-    command_exists, emit_progress, run_command, start_staged_progress, PackageAdapter,
-    ProgressCallback,
-};
+use super::{command_exists, emit_progress, run_command, PackageAdapter, ProgressCallback};
 use crate::model::{
     OperationResult, Package, PackageIdentity, PackageMetadata, PackageSource, PackageVersion,
 };
@@ -472,21 +469,52 @@ impl PackageAdapter for FlatpakAdapter {
         PackageSource::Flatpak
     }
 
+    fn contributes_browse(&self) -> bool {
+        // Flathub's full catalogue is ingested into the offline unified
+        // catalogue at build time; `remote-ls` live listing must not re-add
+        // raw rows (and installment metadata) on every refresh.
+        false
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
     async fn is_available(&self) -> bool {
         command_exists("flatpak").await
     }
 
     async fn list_available(&self) -> Result<Vec<Package>, Box<dyn Error + Send + Sync>> {
-        let output = run_command(
+        // Pin the user installation: installs use `--user`, and on systems
+        // where flathub exists in BOTH system and user installations flatpak
+        // refuses unqualified references ("No remote chosen to resolve...").
+        let output = match run_command(
             "flatpak",
             &[
                 "remote-ls",
+                "--user",
                 "--app",
                 "--columns=application,name,version",
                 &self.remote,
             ][..],
         )
-        .await?;
+        .await
+        {
+            Ok(o) => o,
+            Err(_) => {
+                // No user installation (or list empty): fall back to default.
+                run_command(
+                    "flatpak",
+                    &[
+                        "remote-ls",
+                        "--app",
+                        "--columns=application,name,version",
+                        &self.remote,
+                    ][..],
+                )
+                .await?
+            }
+        };
         Ok(self.parse_remote_ls_output(&output))
     }
 
@@ -508,11 +536,15 @@ impl PackageAdapter for FlatpakAdapter {
         }
 
         // Fallback to local flatpak info
-        let mut output = run_command("flatpak", &["info", app_id][..]).await;
+        let mut output = run_command("flatpak", &["--user", "info", app_id][..]).await;
 
         if output.is_err() {
-            // If it's not installed, try remote-info
-            output = run_command("flatpak", &["remote-info", &self.remote, app_id][..]).await;
+            // If it's not installed, try remote-info (user-pinned remote first)
+            output =
+                run_command("flatpak", &["remote-info", "--user", &self.remote, app_id][..]).await;
+            if output.is_err() {
+                output = run_command("flatpak", &["remote-info", &self.remote, app_id][..]).await;
+            }
         }
 
         match output {
@@ -686,59 +718,36 @@ impl PackageAdapter for FlatpakAdapter {
         let app_id = package_id.strip_prefix("flatpak:").unwrap_or(package_id);
         let args = ["uninstall", "--user", "-y", app_id];
 
-        // Start staged progress immediately at 5%, going up to 90% in larger steps
-        // Flatpak uninstall doesn't provide percentage output, so we rely entirely on staged progress
-        let mut progress_task: Option<tokio::task::JoinHandle<()>> = start_staged_progress(
-            callback.clone(),
-            0.05,
-            0.90,
-            0.15,
-            std::time::Duration::from_millis(300),
-        );
+        // Real progress: flatpak prints percentages when it publishes them;
+        // RealProgress keeps values monotonic across flatpak's sub-stages
+        // (download → uninstall → cleanup) so the bar reflects observed facts.
+        let rp = super::RealProgress::new(callback.clone(), 0.05, 0.95);
+        let mapper_rp = std::sync::Arc::new(super::RealProgress::new(callback.clone(), 0.05, 0.95));
+        let mapper = move |line: &str, _: bool| {
+            if let Some(pct) = parse_percent(line) {
+                mapper_rp.set((pct / 100.0).clamp(0.0, 0.95));
+            }
+        };
+        let result = match super::run_command_with_stream("flatpak", &args, mapper).await {
+            Ok(_) => Ok(OperationResult {
+                success: true,
+                message: format!("Successfully removed {}", app_id),
+                updated_packages: vec![package_id.to_string()],
+            }),
+            Err(e) => Ok(OperationResult {
+                success: false,
+                message: format!("Failed to remove {}: {}", app_id, e),
+                updated_packages: vec![],
+            }),
+        };
 
-        if let Some(cb) = callback {
-            let cb_clone = cb.clone();
-            let result = super::run_command_with_stream("flatpak", &args, move |line, _| {
-                // Flatpak uninstall doesn't output percentages, but we check anyway for future compatibility
-                if let Some(pct) = parse_percent(line) {
-                    cb_clone(pct / 100.0);
-                }
-            })
-            .await;
-
-            // Ensure staged progress completes at 100% before returning
-            if let Some(task) = progress_task.take() {
-                task.abort();
-                // Final progress update to 100%
+        if result.as_ref().map(|r| r.success).unwrap_or(false) {
+            rp.finish();
+            if let Some(cb) = callback.as_ref() {
                 cb(1.0);
             }
-
-            match result {
-                Ok(_) => Ok(OperationResult {
-                    success: true,
-                    message: format!("Successfully removed {}", app_id),
-                    updated_packages: vec![package_id.to_string()],
-                }),
-                Err(e) => Ok(OperationResult {
-                    success: false,
-                    message: format!("Failed to remove {}: {}", app_id, e),
-                    updated_packages: vec![],
-                }),
-            }
-        } else {
-            match super::run_command("flatpak", &args).await {
-                Ok(_) => Ok(OperationResult {
-                    success: true,
-                    message: format!("Uninstalled {}", app_id),
-                    updated_packages: vec![package_id.to_string()],
-                }),
-                Err(e) => Ok(OperationResult {
-                    success: false,
-                    message: e.to_string(),
-                    updated_packages: vec![],
-                }),
-            }
         }
+        result
     }
 
     async fn get_dependencies(

@@ -35,6 +35,7 @@ export struct PackageInfo {
     icon: image,
     homepage_url: string,
     logical_id: string,
+    favorite: bool,
 }
 
 export struct CategoryInfo {
@@ -272,6 +273,46 @@ component IconButton inherits Rectangle {
         font-size: 18px;
         horizontal-alignment: center;
         vertical-alignment: center;
+    }
+}
+
+// Infernal heart toggle — "save for later" that burns in the dark
+component HeartButton inherits Rectangle {
+    in property <bool> favorited: false;
+    callback clicked();
+    width: 44px;
+    height: 44px;
+    border-radius: 22px;
+    background: favorited ? #3a0b05 : AppColors.bg-tertiary;
+    border-width: 1px;
+    border-color: favorited ? #ff3b1d : AppColors.border-primary;
+    animate border-color { duration: 250ms; }
+    states [
+        hovered when heart-touch.has-hover: {
+            background: favorited ? #571710 : AppColors.bg-secondary;
+            border-color: favorited ? #ff6a3d : AppColors.accent-hover;
+        }
+    ]
+    heart-touch := TouchArea {
+        clicked => {
+            root.clicked();
+        }
+    }
+
+    // Layered: flame glyph over the heart when favorited
+    Text {
+        text: favorited ? "♥" : "♡";
+        color: favorited ? #ff2a00 : AppColors.text-secondary;
+        animate color { duration: 200ms; }
+        font-size: 24px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    if favorited: Text {
+        text: "🔥";
+        font-size: 11px;
+        x: 28px;
+        y: 4px;
     }
 }
 
@@ -916,7 +957,7 @@ component AlternativeSourceDropdown inherits Rectangle {
                               alt.source == "Snap" ? "📲" :
                               alt.source == "Pacstall" ? "📦" :
                               alt.source == "Homebrew" ? "🍺" :
-                              alt.source == "GitHub Release" ? "🐙" : "📦";
+                              alt.source == "Direct Release" ? "🐙" : "📦";
                         font-size: 16px;
                         vertical-alignment: center;
                     }
@@ -973,6 +1014,7 @@ component PackageDetailView inherits Rectangle {
     callback update-clicked(string);
     callback source-selected(string);
     callback open-homepage(string);
+    callback toggle-favorite();
 
     background: AppColors.bg-primary;
     clip: true;
@@ -993,6 +1035,12 @@ component PackageDetailView inherits Rectangle {
                 clicked => { back-clicked(); }
             }
             Rectangle { horizontal-stretch: 1; }
+
+            // Save for later (infernal heart)
+            HeartButton {
+                favorited: package.favorite;
+                clicked => { toggle-favorite(); }
+            }
         }
 
         Flickable {
@@ -1711,6 +1759,16 @@ export component MainWindow inherits Window {
     in property <[PackageInfo]> recently-updated;
     in property <[PackageInfo]> search-results;
     in property <[PackageInfo]> installed-packages;
+    // Saved (favorited) apps
+    in property <[PackageInfo]> saved-packages;
+    // Database-refresh progress (real, backed by actual DB row writes)
+    in-out property <bool> is-db-refreshing: false;
+    in-out property <float> db-refresh-progress: 0.0;
+    in-out property <string> db-refresh-status: "";
+    // Dynamic columns based on available width — recalculated as the window
+    // resizes, so tiling WMs (cosmic maximize/split) get an even grid.
+    // Sidebar (~220px) + content padding (~36px) + one card slot (~250px).
+    property <int> grid-columns: Math.max(1, Math.min(6, Math.floor((self.width - 300px) / 250px)));
     in property <[PackageInfo]> category-audio;
     in property <[PackageInfo]> category-video;
     in property <[PackageInfo]> category-development;
@@ -1746,8 +1804,6 @@ export component MainWindow inherits Window {
     in property <[DependencyItem]> selected-deps;
     in property <[string]> available-fonts: ["System Default", "Sans", "Serif", "Monospace"];
     in-out property <[SourceItem]> source-urls;
-    // 3 columns fits well in a 1024px window with 220px sidebar (~772px content area)
-    property <int> grid-columns: 3;
 
     // State properties
     in-out property <[PackageInfo]> current-category-packages;
@@ -1803,6 +1859,15 @@ export component MainWindow inherits Window {
     callback open-homepage(string);
     callback source-selected(string);
     callback load-more(string);
+    // Favorites: return value = new saved state (heart burns on when true)
+    callback toggle-favorite(string, string) -> bool;
+    // Direct Release: install straight from "owner/repo" or a github.com URL
+    in-out property <string> direct-repo-input: "";
+    in-out property <string> direct-status: "";
+    callback direct-release-install(string);
+    // Refresh button: rebuild the catalogue cache from every source with
+    // REAL database-write progress forwarded into db-refresh-* properties.
+    callback refresh-db-clicked();
 
 
     Timer {
@@ -1987,6 +2052,31 @@ export component MainWindow inherits Window {
 
                             Rectangle { height: 16px; }
 
+                            // Direct Release — install straight from any repo
+                            SidebarItem {
+                                label: "Direct Release";
+                                icon: "⚡";
+                                selected: current-view == "direct";
+                                clicked => {
+                                    if !is-transitioning {
+                                        current-view = "direct";
+                                    }
+                                }
+                            }
+
+                            // Infernal heart — saved for later
+                            SidebarItem {
+                                label: "Saved";
+                                icon: "♥";
+                                selected: current-view == "saved";
+                                count: saved-packages.length;
+                                clicked => {
+                                    if !is-transitioning {
+                                        current-view = "saved";
+                                    }
+                                }
+                            }
+
                             SidebarItem {
                                 label: "Installed";
                                 icon: "✓";
@@ -2058,6 +2148,13 @@ export component MainWindow inherits Window {
                                 horizontal-stretch: 1;
                             }  // Spacer
 
+                            // Refresh the catalogue from every source
+                            // (real DB-progress shown under the top bar)
+                            IconButton {
+                                icon-text: "🔄";
+                                clicked => { root.refresh-db-clicked(); }
+                            }
+
                             // Gear icon → opens Settings
                             IconButton {
                                 icon-text: "⚙️";
@@ -2076,6 +2173,54 @@ export component MainWindow inherits Window {
                     progress: root.install-progress;
                     is-uninstalling: root.is-uninstalling;
                     height: 60px;
+                }
+
+                // Catalogue refresh progress (real DB-write accounting)
+                if root.is-db-refreshing : Rectangle {
+                    height: 52px;
+                    background: AppColors.bg-secondary;
+                    border-width: 1px;
+                    border-color: AppColors.accent-primary;
+                    border-radius: 8px;
+
+                    HorizontalLayout {
+                        padding: 12px;
+                        spacing: 12px;
+
+                        Text {
+                            text: "🔄 " + root.db-refresh-status;
+                            color: AppColors.text-primary;
+                            font-size: 13px;
+                            vertical-alignment: center;
+                            overflow: elide;
+                            horizontal-stretch: 1;
+                        }
+
+                        Rectangle {
+                            width: 320px;
+                            height: 12px;
+                            vertical-stretch: 0;
+                            background: #1a0505;
+                            border-radius: 6px;
+                            clip: true;
+
+                            Rectangle {
+                                width: parent.width * Math.clamp(root.db-refresh-progress, 0.0, 1.0);
+                                height: 100%;
+                                background: @linear-gradient(90deg, #800000 0%, #ff4500 50%, #ffd700 100%);
+                                border-radius: 6px;
+                            }
+                        }
+
+                        Text {
+                            text: Math.round(Math.clamp(root.db-refresh-progress, 0.0, 1.0) * 100) + "%";
+                            color: #ff8c00;
+                            font-size: 13px;
+                            font-weight: 700;
+                            vertical-alignment: center;
+                            width: 48px;
+                        }
+                    }
                 }
                 
                 // Content area with custom intelligent scrollbar
@@ -2207,7 +2352,7 @@ export component MainWindow inherits Window {
                             }
 
                     // Generic Category View (Catalogue)
-                    if current-view != "home" && current-view != "search" && current-view != "installed" && current-view != "app-settings": CategorySection {
+                    if current-view != "home" && current-view != "search" && current-view != "installed" && current-view != "saved" && current-view != "direct" && current-view != "app-settings": CategorySection {
                         title: root.current-category-icon + " " + root.current-category-name;
                         packages: root.current-category-packages;
                         columns: root.grid-columns;
@@ -2282,6 +2427,120 @@ export component MainWindow inherits Window {
                             }
                         }
                         
+                        // Saved (favorited) packages view
+                        if current-view == "saved": VerticalLayout {
+                            spacing: 16px;
+                            padding-top: 0px;
+
+                            HorizontalLayout {
+                                spacing: 12px;
+                                Text {
+                                    text: "♥";
+                                    color: AppColors.accent-hover;
+                                    font-size: 24px;
+                                    vertical-alignment: center;
+                                }
+                                Text {
+                                    text: "Saved for Later";
+                                    color: AppColors.text-primary;
+                                    font-size: 24px;
+                                    font-weight: 800;
+                                    vertical-alignment: center;
+                                }
+                                Rectangle { horizontal-stretch: 1; }
+                            }
+
+                            if saved-packages.length == 0: Text {
+                                text: "Nothing burning yet — tap the ♥ on any app's page and it will wait for you here.";
+                                color: AppColors.text-secondary;
+                                font-size: 14px;
+                            }
+
+                            for pkg[idx] in saved-packages: PackageListItem {
+                                package: pkg;
+                                row-index: idx;
+                                clicked => { package-clicked(pkg.id); }
+                                install-clicked => { install-clicked(pkg.id); }
+                                open-clicked => { open-clicked(pkg.id); }
+                                update-clicked => { update-clicked(pkg.id); }
+                                uninstall-clicked => { uninstall-clicked(pkg.id); }
+                            }
+                        }
+
+                        // Direct Release view — enter a repo / URL, get the app
+                        if current-view == "direct": VerticalLayout {
+                            spacing: 16px;
+                            padding-top: 0px;
+
+                            HorizontalLayout {
+                                spacing: 12px;
+                                Text {
+                                    text: "⚡";
+                                    font-size: 24px;
+                                    vertical-alignment: center;
+                                }
+                                VerticalLayout {
+                                    alignment: center;
+                                    spacing: 2px;
+                                    Text {
+                                        text: "Direct Release";
+                                        color: AppColors.text-primary;
+                                        font-size: 24px;
+                                        font-weight: 800;
+                                    }
+                                    Text {
+                                        text: "Enter a GitHub repo or URL — Offerings picks the right asset for your machine and installs it in ~/.local/bin.";
+                                        color: AppColors.text-secondary;
+                                        font-size: 12px;
+                                    }
+                                }
+                                Rectangle { horizontal-stretch: 1; }
+                            }
+
+                            HorizontalLayout {
+                                spacing: 12px;
+                                Rectangle {
+                                    horizontal-stretch: 1;
+                                    max-width: 560px;
+                                    background: AppColors.bg-tertiary;
+                                    border-width: 1px;
+                                    border-color: AppColors.border-primary;
+                                    border-radius: 6px;
+                                    LineEdit {
+                                        text <=> direct-repo-input;
+                                        placeholder-text: "owner/repo  (e.g. sharkdp/bat) or https://github.com/.../releases";
+                                        accepted => { root.direct-release-install(direct-repo-input); }
+                                    }
+                                }
+                                ActionButton {
+                                    text: "Install";
+                                    primary: true;
+                                    clicked => { root.direct-release-install(direct-repo-input); }
+                                }
+                            }
+
+                            if direct-status != "": HorizontalLayout {
+                                Rectangle {
+                                    background: AppColors.bg-secondary;
+                                    border-width: 1px;
+                                    border-color: AppColors.accent-primary;
+                                    border-radius: 6px;
+                                    horizontal-stretch: 1;
+                                    max-width: 560px;
+                                    height: 40px;
+                                    Text {
+                                        text: direct-status;
+                                        color: AppColors.text-primary;
+                                        font-size: 13px;
+                                        vertical-alignment: center;
+                                        x: 12px;
+                                        overflow: elide;
+                                    }
+                                }
+                                Rectangle { horizontal-stretch: 1; }
+                            }
+                        }
+
                         // Search results view
                         if current-view == "search": VerticalLayout {
                             spacing: 16px;
@@ -2364,6 +2623,11 @@ export component MainWindow inherits Window {
         }
         open-homepage(url) => {
             root.open-homepage(url);
+        }
+        toggle-favorite() => {
+            // The Rust side flips the flag and returns the new state with an
+            // updated `selected-package`, which rebinds the heart instantly.
+            root.toggle-favorite(selected-package.id, selected-package.name);
         }
     }
 }

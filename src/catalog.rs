@@ -147,7 +147,7 @@ fn non_empty(value: &str) -> Option<String> {
     (!trimmed.is_empty()).then_some(trimmed.to_string())
 }
 
-fn candidate_catalog_paths() -> Vec<PathBuf> {
+pub fn candidate_catalog_paths() -> Vec<PathBuf> {
     let mut paths =
         vec![PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets/metadata-catalog.json")];
 
@@ -159,4 +159,55 @@ fn candidate_catalog_paths() -> Vec<PathBuf> {
     }
 
     paths
+}
+
+/// Read the built catalogue JSON files directly and return every raw entry,
+/// merging duplicates by package_id across search paths. Used by adapters that
+/// serve the offline catalogue as their package listing (no network, no CLI).
+/// Fingerprint of the current catalogue seeds: the (path, mtime) of every
+/// existing catalogue file. Used by adapters to detect that an external
+/// updater (offerings-catalogue-update.timer) rebuilt the JSON, so the
+/// in-app cache re-loads without restarting the process.
+pub fn catalog_fingerprint() -> Vec<(PathBuf, Option<std::time::SystemTime>)> {
+    candidate_catalog_paths()
+        .into_iter()
+        .filter_map(|p| {
+            let mtime = std::fs::metadata(&p).ok().and_then(|md| md.modified().ok());
+            mtime.map(|t| (p, Some(t)))
+        })
+        .collect()
+}
+
+pub fn load_raw_entries() -> Vec<CatalogEntry> {
+    let mut out: Vec<CatalogEntry> = Vec::new();
+    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+
+    for path in candidate_catalog_paths() {
+        if !path.is_file() {
+            continue;
+        }
+        let text = match std::fs::read_to_string(&path) {
+            Ok(t) => t,
+            Err(_) => continue,
+        };
+        let catalog: UnifiedCatalog = match serde_json::from_str(&text) {
+            Ok(c) => c,
+            Err(e) => {
+                eprintln!("Warning: malformed catalogue at {}: {}", path.display(), e);
+                continue;
+            }
+        };
+        for entry in catalog.entries {
+            let key = entry
+                .package_id
+                .clone()
+                .or_else(|| entry.name.clone().map(|n| n.to_lowercase()));
+            let Some(key) = key else { continue };
+            if seen.insert(key) {
+                out.push(entry);
+            }
+        }
+    }
+
+    out
 }

@@ -216,6 +216,10 @@ impl PackageAdapter for LilithCatalogAdapter {
         PackageSource::OfferingsLilith
     }
 
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
     async fn is_available(&self) -> bool {
         true
     }

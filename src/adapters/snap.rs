@@ -1,7 +1,6 @@
 // src/adapters/snap.rs - Snap Package Manager Adapter
 use super::{
-    command_exists, emit_progress, run_command, run_sudo_command, start_staged_progress,
-    PackageAdapter, ProgressCallback,
+    command_exists, run_command, run_sudo_command, PackageAdapter, ProgressCallback, RealProgress,
 };
 use crate::model::{
     OperationResult, Package, PackageIdentity, PackageMetadata, PackageSource, PackageVersion,
@@ -9,6 +8,79 @@ use crate::model::{
 use async_trait::async_trait;
 use serde::Deserialize;
 use std::error::Error;
+
+/// REAL Snap progress: snapd persists every change with a task list in its
+/// database. We poll `snap changes` / `snap change <id>` and compute the ratio
+/// of finished tasks — actual progress, straight from snapd's DB, not a timer.
+async fn snap_change_progress(snap_name: &str) -> Option<f32> {
+    let changes = run_command("snap", &["changes"]).await.ok()?;
+    let needle = format!("\"{}\"", snap_name.to_lowercase());
+
+    let mut best: Option<f32> = None;
+    for line in changes.lines().skip(1) {
+        let cols: Vec<&str> = line.split_whitespace().collect();
+        if cols.len() < 4 {
+            continue;
+        }
+        // Summary column mentions `Install "name" snap`, `Refresh "name" snap`, ...
+        if !line.to_lowercase().contains(&needle) {
+            continue;
+        }
+        let change_id = cols[0];
+        // A running change shows '∅' in its Ready column.
+        let running = line.contains('∅') || line.contains('−');
+        let p: f32 = if running {
+            change_task_progress(change_id).await.unwrap_or(0.05)
+        } else {
+            1.0
+        };
+        best = Some(best.map_or(p, |prev| p.max(prev)));
+    }
+    best
+}
+
+/// Compute actual progress of one snapd change: finished tasks / total tasks.
+async fn change_task_progress(change_id: &str) -> Option<f32> {
+    let out = run_command("snap", &["change", change_id]).await.ok()?;
+    let mut total = 0usize;
+    let mut done_units = 0.0f32;
+    for line in out.lines().skip(1) {
+        let status = line.trim_start().split_whitespace().next().unwrap_or("");
+        match status {
+            "Done" | "Done." => {
+                total += 1;
+                done_units += 1.0;
+            }
+            "Doing" | "Doing." | "Running" | "Run" | "Wait" => {
+                total += 1;
+                done_units += 0.25;
+            }
+            "Error" | "Undone" | "Abort" | "Hold" => {
+                total += 1;
+            }
+            _ => {}
+        }
+    }
+    (total > 0).then(|| done_units / total as f32)
+}
+
+/// Poll snapd in the background while the blocking pkexec command runs,
+/// feeding each observed real progress value into the window 0.08..0.88.
+async fn poll_snap_progress(snap_name: String, callback: Option<ProgressCallback>) {
+    let rp = std::sync::Arc::new(RealProgress::new(callback, 0.08, 0.9));
+    for _ in 0..2400 {
+        // up to ~30 minutes at 750ms
+        tokio::time::sleep(std::time::Duration::from_millis(750)).await;
+        match snap_change_progress(&snap_name).await {
+            Some(p) if p >= 0.999 => {
+                rp.set_percent(1.0);
+                return;
+            }
+            Some(p) => rp.set_percent(p),
+            None => {}
+        }
+    }
+}
 
 #[derive(Debug, Deserialize)]
 struct SnapSearchResult {
@@ -340,6 +412,14 @@ impl PackageAdapter for SnapAdapter {
         PackageSource::Snap
     }
 
+    fn contributes_browse(&self) -> bool {
+        false
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
     async fn is_available(&self) -> bool {
         command_exists("snap").await
     }
@@ -450,19 +530,27 @@ impl PackageAdapter for SnapAdapter {
         package_id: &str,
         callback: Option<ProgressCallback>,
     ) -> Result<OperationResult, Box<dyn Error + Send + Sync>> {
-        let progress_task = start_staged_progress(
-            callback.clone(),
-            0.05,
-            0.9,
-            0.07,
-            std::time::Duration::from_millis(950),
-        );
-        let result = self.install(package_id).await;
-        if let Some(task) = progress_task {
-            task.abort();
-        }
+        let snap_name = package_id.strip_prefix("snap:").unwrap_or(package_id);
+
+        // Real progress: poller reads snapd's change DB while install runs.
+        let poller = tokio::spawn(poll_snap_progress(snap_name.to_string(), callback.clone()));
+        let result = match run_sudo_command("snap", &["install", snap_name][..]).await {
+            Ok(_) => Ok(OperationResult {
+                success: true,
+                message: format!("Successfully installed {}", snap_name),
+                updated_packages: vec![package_id.to_string()],
+            }),
+            Err(e) => Ok(OperationResult {
+                success: false,
+                message: format!("Failed to install {}: {}", snap_name, e),
+                updated_packages: vec![],
+            }),
+        };
+        poller.abort();
         if result.as_ref().map(|r| r.success).unwrap_or(false) {
-            emit_progress(&callback, 1.0);
+            if let Some(cb) = callback.as_ref() {
+                cb(1.0);
+            }
         }
         result
     }
@@ -492,19 +580,26 @@ impl PackageAdapter for SnapAdapter {
         package_id: &str,
         callback: Option<ProgressCallback>,
     ) -> Result<OperationResult, Box<dyn Error + Send + Sync>> {
-        let progress_task = start_staged_progress(
-            callback.clone(),
-            0.08,
-            0.92,
-            0.06,
-            std::time::Duration::from_millis(900),
-        );
-        let result = self.update(package_id).await;
-        if let Some(task) = progress_task {
-            task.abort();
-        }
+        let snap_name = package_id.strip_prefix("snap:").unwrap_or(package_id);
+
+        let poller = tokio::spawn(poll_snap_progress(snap_name.to_string(), callback.clone()));
+        let result = match run_sudo_command("snap", &["refresh", snap_name][..]).await {
+            Ok(_) => Ok(OperationResult {
+                success: true,
+                message: format!("Successfully updated {}", snap_name),
+                updated_packages: vec![package_id.to_string()],
+            }),
+            Err(e) => Ok(OperationResult {
+                success: false,
+                message: format!("Failed to update {}: {}", snap_name, e),
+                updated_packages: vec![],
+            }),
+        };
+        poller.abort();
         if result.as_ref().map(|r| r.success).unwrap_or(false) {
-            emit_progress(&callback, 1.0);
+            if let Some(cb) = callback.as_ref() {
+                cb(1.0);
+            }
         }
         result
     }
@@ -534,19 +629,26 @@ impl PackageAdapter for SnapAdapter {
         package_id: &str,
         callback: Option<ProgressCallback>,
     ) -> Result<OperationResult, Box<dyn Error + Send + Sync>> {
-        let progress_task = start_staged_progress(
-            callback.clone(),
-            0.1,
-            0.9,
-            0.08,
-            std::time::Duration::from_millis(850),
-        );
-        let result = self.uninstall(package_id).await;
-        if let Some(task) = progress_task {
-            task.abort();
-        }
+        let snap_name = package_id.strip_prefix("snap:").unwrap_or(package_id);
+
+        let poller = tokio::spawn(poll_snap_progress(snap_name.to_string(), callback.clone()));
+        let result = match run_sudo_command("snap", &["remove", snap_name][..]).await {
+            Ok(_) => Ok(OperationResult {
+                success: true,
+                message: format!("Successfully removed {}", snap_name),
+                updated_packages: vec![package_id.to_string()],
+            }),
+            Err(e) => Ok(OperationResult {
+                success: false,
+                message: format!("Failed to remove {}: {}", snap_name, e),
+                updated_packages: vec![],
+            }),
+        };
+        poller.abort();
         if result.as_ref().map(|r| r.success).unwrap_or(false) {
-            emit_progress(&callback, 1.0);
+            if let Some(cb) = callback.as_ref() {
+                cb(1.0);
+            }
         }
         result
     }

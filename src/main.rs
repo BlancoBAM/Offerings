@@ -20,9 +20,38 @@ use slint::Model;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::Command;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 
 slint::include_modules!();
+
+// ── Favorites ("Saved for later") global registry ─────────────────────────────
+// The Slint conversion helpers are pure functions, so the favorited state is
+// kept in a process-wide registry sourced from the SQLite `favorites` table.
+static FAVORITES: OnceLock<Mutex<std::collections::HashSet<String>>> = OnceLock::new();
+
+fn favorites_store() -> &'static Mutex<std::collections::HashSet<String>> {
+    FAVORITES.get_or_init(|| Mutex::new(std::collections::HashSet::new()))
+}
+
+fn is_favorite(package_id: &str) -> bool {
+    favorites_store().lock().unwrap().contains(package_id)
+}
+
+fn set_favorite_flag(package_id: &str, favorite: bool) {
+    let mut store = favorites_store().lock().unwrap();
+    if favorite {
+        store.insert(package_id.to_string());
+    } else {
+        store.remove(package_id);
+    }
+}
+
+fn load_favorites_from_db(backend: &BackendService) {
+    let ids = backend.get_favorite_ids();
+    let mut store = favorites_store().lock().unwrap();
+    store.clear();
+    store.extend(ids);
+}
 
 /// Query system fonts via fc-list and return sorted, deduplicated family names
 fn get_system_fonts() -> Vec<String> {
@@ -56,7 +85,7 @@ fn source_url(label: &str) -> &'static str {
         "AM / AppImage" => "https://portable-linux-apps.github.io/apps",
         "SOAR / PkgForge" => "https://pkgs.pkgforge.dev",
         "Homebrew" => "https://brew.sh",
-        "GitHub Release" => "https://github.com",
+        "Direct Release" => "https://github.com",
         "Custom" => "file:///etc/offerings/custom",
         "Lilith" => "file:///etc/offerings/custom",
         _ => "unknown://",
@@ -164,6 +193,7 @@ fn package_to_slint_info(pkg: model::Package) -> PackageInfo {
         )),
         homepage_url: pkg.metadata.homepage_url.clone().unwrap_or_default().into(),
         logical_id: pkg.logical_app_id.clone().unwrap_or_default().into(),
+        favorite: is_favorite(&pkg.identity.id),
         icon: {
             let mut img = slint::Image::default();
             let safe_id = pkg.identity.id.replace([':', '/'], "_");
@@ -658,6 +688,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 screenshots: slint::ModelRc::new(slint::VecModel::from(Vec::new())),
                 homepage_url: local_pkg.homepage.clone().into(),
                 logical_id: String::new().into(),
+                favorite: false,
                 icon: slint::Image::default(),
             };
 
@@ -735,6 +766,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                                         screenshots: slint::ModelRc::new(slint::VecModel::from(Vec::new())),
                                         homepage_url: homepage.clone().into(),
                                         logical_id: String::new().into(),
+                                        favorite: is_favorite(&name),
                                         icon: slint::Image::default(),
                                     };
                                     ui.set_selected_package(updated);
@@ -774,6 +806,10 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     eprintln!("Slint UI created and visible!");
 
+    // Load the user's saved ("favorited") package ids BEFORE any PackageInfo
+    // is built, so the heart state is correct on the very first paint.
+    load_favorites_from_db(&backend);
+
     // Single authoritative loading state initialization
     ui.set_is_loading(true);
     ui.set_loading_status("Preparing the Offerings...".into());
@@ -796,6 +832,15 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             }
         });
         backend_init.load_cache_from_db().await;
+
+        // ── Step 0.25: restore the Saved (favorited) section from the DB ─────
+        let saved = backend_init.get_favorite_packages().await;
+        let ui_handle = ui_init.clone();
+        let _ = slint::invoke_from_event_loop(move || {
+            if let Some(ui) = ui_handle.upgrade() {
+                ui.set_saved_packages(convert_to_slint_packages(saved));
+            }
+        });
 
         // ── Step 0.5: First paint from DB data ────────────────────────────────
         // If the DB has packages (i.e. not a brand-new install), populate the
@@ -1531,6 +1576,220 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                         }
                     }
                 });
+            });
+        }
+    });
+
+    // ── Favorites: heart toggle on the detail page ─────────────────────────
+    ui.on_toggle_favorite({
+        let ui_weak = ui.as_weak();
+        let backend = backend_clone.clone();
+        let tokio_handle = tokio_handle.clone();
+        move |package_id, package_name| {
+            let package_id = package_id.to_string();
+            let package_name = package_name.to_string();
+            let new_state = !is_favorite(&package_id);
+
+            match backend.set_favorite(&package_id, &package_name, new_state) {
+                Ok(state) => {
+                    set_favorite_flag(&package_id, state);
+                    eprintln!(
+                        "Favorite '{}' set to {} (persisted to DB)",
+                        package_id, state
+                    );
+                }
+                Err(e) => {
+                    eprintln!("Warning: failed to persist favorite for {}: {}", package_id, e);
+                }
+            }
+
+            // Reflect the new state in the currently selected package so the
+            // heart on the detail page binds instantly.
+            if let Some(ui) = ui_weak.upgrade() {
+                let mut selected = ui.get_selected_package();
+                if selected.id == package_id {
+                    selected.favorite = is_favorite(&package_id);
+                    ui.set_selected_package(selected);
+                }
+            }
+
+            // Rebuild the Saved section from the backend.
+            let ui_weak = ui_weak.clone();
+            let backend = backend.clone();
+            tokio_handle.spawn(async move {
+                let favorites = backend.get_favorite_packages().await;
+                let _ = slint::invoke_from_event_loop(move || {
+                    if let Some(ui) = ui_weak.upgrade() {
+                        ui.set_saved_packages(convert_to_slint_packages(favorites));
+                    }
+                });
+            });
+
+            is_favorite(&package_id)
+        }
+    });
+
+    // ── Refresh button: rebuild the catalogue cache with REAL DB progress ──
+    ui.on_refresh_db_clicked({
+        let ui_weak = ui.as_weak();
+        let backend = backend_clone.clone();
+        let tokio_handle = tokio_handle.clone();
+        move || {
+            let backend = backend.clone();
+            let ui_weak = ui_weak.clone();
+
+            tokio_handle.spawn(async move {
+                // Show the progress row immediately.
+                let _ = slint::invoke_from_event_loop({
+                    let ui_weak = ui_weak.clone();
+                    move || {
+                        if let Some(ui) = ui_weak.upgrade() {
+                            ui.set_is_db_refreshing(true);
+                            ui.set_db_refresh_progress(0.0);
+                            ui.set_db_refresh_status(
+                                "Refreshing catalogue from all sources...".into(),
+                            );
+                        }
+                    }
+                });
+
+                // Forward every (fraction, status) pair emitted by the backend
+                // — each percentage corresponds to package rows really written.
+                let emit_weak = ui_weak.clone();
+                let progress: crate::adapters::DbProgressCallback =
+                    Arc::new(move |fraction, message| {
+                        let ui_weak = emit_weak.clone();
+                        let _ = slint::invoke_from_event_loop(move || {
+                            if let Some(ui) = ui_weak.upgrade() {
+                                ui.set_is_db_refreshing(true);
+                                ui.set_db_refresh_progress(fraction);
+                                ui.set_db_refresh_status(message.as_str().into());
+                            }
+                        });
+                    });
+
+                let result = backend.refresh_cache_with_progress(Some(progress)).await;
+
+                let ok = result.is_ok();
+                let final_status = match &result {
+                    Ok(()) => "Refresh complete — catalogue rebuilt".to_string(),
+                    Err(e) => format!("Refresh failed: {}", e),
+                };
+
+                let _ = slint::invoke_from_event_loop({
+                    let ui_weak = ui_weak.clone();
+                    move || {
+                        if let Some(ui) = ui_weak.upgrade() {
+                            ui.set_is_db_refreshing(false);
+                            ui.set_db_refresh_progress(1.0);
+                            ui.set_db_refresh_status(final_status.as_str().into());
+                        }
+                    }
+                });
+
+                // Repopulate every view with the freshly refreshed cache.
+                if ok {
+                    populate_ui_async(&ui_weak, &backend).await;
+                    // Refresh the saved section too — favourite rows survive,
+                    // but their metadata may have been updated.
+                    let saved = backend.get_favorite_packages().await;
+                    let _ = slint::invoke_from_event_loop({
+                        let ui_weak = ui_weak.clone();
+                        move || {
+                            if let Some(ui) = ui_weak.upgrade() {
+                                ui.set_saved_packages(convert_to_slint_packages(saved));
+                            }
+                        }
+                    });
+                }
+
+                let _ = result;
+            });
+        }
+    });
+
+    // ── Direct Release: install straight from "owner/repo" or a URL ────────
+    ui.on_direct_release_install({
+        let ui_weak = ui.as_weak();
+        let backend = backend_clone.clone();
+        let tokio_handle = tokio_handle.clone();
+        move |repo_input| {
+            let backend = backend.clone();
+            let repo_input = repo_input.to_string();
+            let ui_weak = ui_weak.clone();
+
+            if repo_input.trim().is_empty() {
+                let _ = slint::invoke_from_event_loop({
+                    let ui_weak = ui_weak.clone();
+                    move || {
+                        if let Some(ui) = ui_weak.upgrade() {
+                            ui.set_direct_status(
+                                "Enter e.g.  sharkdp/bat  or a github.com URL".into(),
+                            );
+                        }
+                    }
+                });
+                return;
+            }
+
+            tokio_handle.spawn(async move {
+                let _ = slint::invoke_from_event_loop({
+                    let ui_weak = ui_weak.clone();
+                    let repo_input = repo_input.clone();
+                    move || {
+                        if let Some(ui) = ui_weak.upgrade() {
+                            ui.set_direct_status(
+                                format!("⚡ Resolving {} — finding the right release...", repo_input)
+                                    .into(),
+                            );
+                        }
+                    }
+                });
+
+                match backend.install_direct_release(&repo_input).await {
+                    Ok(result) => {
+                        let _ = slint::invoke_from_event_loop({
+                            let ui_weak = ui_weak.clone();
+                            move || {
+                                if let Some(ui) = ui_weak.upgrade() {
+                                    ui.set_direct_status(result.message.as_str().into());
+                                }
+                            }
+                        });
+
+                        if result.success {
+                            // Reconcile the freshly installed package so it
+                            // appears in Installed and future refreshes.
+                            if let Some(op_target) = result.updated_packages.first() {
+                                let pkg_id = op_target.clone();
+                                backend.reconcile_package_state(&pkg_id, true).await;
+                            }
+                            let installed = backend.get_installed_packages().await;
+                            let _ = slint::invoke_from_event_loop({
+                                let ui_weak = ui_weak.clone();
+                                move || {
+                                    if let Some(ui) = ui_weak.upgrade() {
+                                        ui.set_installed_packages(convert_to_slint_packages(
+                                            installed,
+                                        ));
+                                    }
+                                }
+                            });
+                        }
+                    }
+                    Err(e) => {
+                        let _ = slint::invoke_from_event_loop({
+                            let ui_weak = ui_weak.clone();
+                            move || {
+                                if let Some(ui) = ui_weak.upgrade() {
+                                    ui.set_direct_status(
+                                        format!("Direct Release failed: {}", e).into(),
+                                    );
+                                }
+                            }
+                        });
+                    }
+                }
             });
         }
     });
@@ -2582,6 +2841,7 @@ fn update_package_in_all_models(ui: &MainWindow, updated_pkg: &PackageInfo) {
                     pkg.is_installed = updated_pkg.is_installed;
                     pkg.installed_version = updated_pkg.installed_version.clone();
                     pkg.has_update = updated_pkg.has_update;
+                    pkg.favorite = updated_pkg.favorite;
                     found = true;
                 }
                 pkg

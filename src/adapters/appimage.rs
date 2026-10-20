@@ -1,7 +1,7 @@
 // src/adapters/appimage.rs - AppImage Management Adapter
 use super::{
-    command_exists, emit_progress, run_command, start_staged_progress, PackageAdapter,
-    ProgressCallback,
+    command_exists, emit_progress, run_command, run_command_with_stream, PackageAdapter,
+    ProgressCallback, RealProgress,
 };
 use crate::model::{
     OperationResult, Package, PackageIdentity, PackageMetadata, PackageSource, PackageVersion,
@@ -29,6 +29,9 @@ impl AppImageAdapter {
                 home.join("Applications"),
                 home.join(".local/share/applications"),
                 home.join("Downloads"),
+                // Include the user's bin dir so Direct Release downloads /
+                // hand-saved AppImages appear in the store automatically.
+                home.join(".local/bin"),
                 PathBuf::from("/opt"),
                 PathBuf::from("/usr/local/bin"),
             ],
@@ -396,6 +399,17 @@ impl PackageAdapter for AppImageAdapter {
         PackageSource::AppImage
     }
 
+    fn contributes_browse(&self) -> bool {
+        // AM's appimage catalogue is ingested into the offline unified
+        // catalogue at build time; live `am -l` listing would re-add rows —
+        // including AM's busybox/coreutils/CLI databases — on every refresh.
+        false
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
     async fn is_available(&self) -> bool {
         // AppImages are always "available" on Linux
         true
@@ -416,8 +430,25 @@ impl PackageAdapter for AppImageAdapter {
         let mut packages = Vec::new();
 
         if command_exists("am").await {
-            // Use "am -l --all" to list all available packages from all databases
-            if let Ok(output) = run_command("am", &["-l", "--all"]).await {
+            // "am -l" lists ONLY the appimage database — exactly the desktop
+            // AppImage catalogue this store mirrors. The "--all" variant also
+            // dumps AM's busybox / coreutils / portable-CLI databases, which
+            // would re-flood the browse grid with thousands of CLI plumbing
+            // entries the catalogue builder deliberately filtered out.
+            let mut output = run_command("am", &["-l"]).await;
+            let has_entries = output
+                .as_ref()
+                .map(|o| o.lines().any(|l| l.contains("◆")))
+                .unwrap_or(false);
+            if !has_entries {
+                // Older/forked AM layouts: fall back to the wider listing.
+                if let Ok(o) = run_command("am", &["-l", "--all"]).await {
+                    if o.lines().any(|l| l.contains("◆")) {
+                        output = Ok(o);
+                    }
+                }
+            }
+            if let Ok(output) = output {
                 for line in output.lines() {
                     let line = line.trim();
 
@@ -710,18 +741,76 @@ impl PackageAdapter for AppImageAdapter {
         package_id: &str,
         callback: Option<ProgressCallback>,
     ) -> Result<OperationResult, Box<dyn Error + Send + Sync>> {
-        let progress_task = start_staged_progress(
-            callback.clone(),
-            0.05,
-            0.9,
-            0.08,
-            std::time::Duration::from_millis(700),
-        );
-        let result = self.install(package_id).await;
-        if let Some(task) = progress_task {
-            task.abort();
+        let id_clean = package_id.strip_prefix("appimage:").unwrap_or(package_id);
+
+        // ── Local AppImage install: real, directly-observed copy/move steps ──
+        if id_clean.contains('/') || id_clean.to_lowercase().ends_with(".appimage") {
+            let local = PathBuf::from(id_clean);
+            let rp = RealProgress::new(callback.clone(), 0.05, 0.95);
+            if !local.exists() {
+                return Ok(OperationResult {
+                    success: false,
+                    message: "Local AppImage file not found".to_string(),
+                    updated_packages: vec![],
+                });
+            }
+            let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
+            let dest_dir = home.join(".local/share/Applications");
+            let _ = std::fs::create_dir_all(&dest_dir);
+            let filename_lossy = local
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("app.appimage")
+                .to_string();
+            let dest_path = dest_dir.join(local.file_name().unwrap_or_default());
+            std::fs::copy(&local, &dest_path)
+                .map_err(|e| format!("Failed to copy AppImage: {}", e))?;
+            rp.milestone(0.7); // file copied — actual step complete
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                let _ = std::fs::set_permissions(
+                    &dest_path,
+                    std::fs::Permissions::from_mode(0o755),
+                );
+            }
+            rp.milestone(0.9); // executable bit applied
+            let (app_name, _) = self.parse_appimage_name(&filename_lossy);
+            let _ = self.create_desktop_entry(&dest_path, &app_name).await;
+            rp.finish();
+            emit_progress(&callback, 1.0);
+            return Ok(OperationResult {
+                success: true,
+                message: format!("Installed local AppImage: {}", dest_path.display()),
+                updated_packages: vec![format!("appimage:{}", dest_path.display())],
+            });
         }
+
+        // ── AM package install: stream the real tool output, parse its % ──
+        if !command_exists("am").await {
+            return Ok(OperationResult {
+                success: false,
+                message: "AM package manager not found. Please provide a local path or install AM."
+                    .to_string(),
+                updated_packages: vec![],
+            });
+        }
+        let rp = RealProgress::new(callback.clone(), 0.02, 0.93);
+        let mapper = rp.percent_mapper();
+        let result = match run_command_with_stream("am", &["-i", id_clean], mapper).await {
+            Ok(_) => Ok(OperationResult {
+                success: true,
+                message: format!("Successfully installed AM package: {}", id_clean),
+                updated_packages: vec![package_id.to_string()],
+            }),
+            Err(e) => Ok(OperationResult {
+                success: false,
+                message: format!("AM installation failed: {}", e),
+                updated_packages: vec![],
+            }),
+        };
         if result.as_ref().map(|r| r.success).unwrap_or(false) {
+            rp.finish();
             emit_progress(&callback, 1.0);
         }
         result
@@ -769,18 +858,41 @@ impl PackageAdapter for AppImageAdapter {
         package_id: &str,
         callback: Option<ProgressCallback>,
     ) -> Result<OperationResult, Box<dyn Error + Send + Sync>> {
-        let progress_task = start_staged_progress(
-            callback.clone(),
-            0.08,
-            0.92,
-            0.08,
-            std::time::Duration::from_millis(700),
-        );
-        let result = self.update(package_id).await;
-        if let Some(task) = progress_task {
-            task.abort();
+        let id_clean = package_id.strip_prefix("appimage:").unwrap_or(package_id);
+
+        if id_clean.contains('/') || id_clean.to_lowercase().ends_with(".appimage") {
+            return Ok(OperationResult {
+                success: false,
+                message: "Local AppImages must be updated manually via downloading the new file"
+                    .to_string(),
+                updated_packages: vec![],
+            });
         }
+
+        if !command_exists("am").await {
+            return Ok(OperationResult {
+                success: false,
+                message: "AM package manager not found.".to_string(),
+                updated_packages: vec![],
+            });
+        }
+
+        let rp = RealProgress::new(callback.clone(), 0.03, 0.93);
+        let mapper = rp.percent_mapper();
+        let result = match run_command_with_stream("am", &["-u", id_clean], mapper).await {
+            Ok(_) => Ok(OperationResult {
+                success: true,
+                message: format!("Successfully updated AM package: {}", id_clean),
+                updated_packages: vec![package_id.to_string()],
+            }),
+            Err(e) => Ok(OperationResult {
+                success: false,
+                message: format!("AM update failed: {}", e),
+                updated_packages: vec![],
+            }),
+        };
         if result.as_ref().map(|r| r.success).unwrap_or(false) {
+            rp.finish();
             emit_progress(&callback, 1.0);
         }
         result
@@ -844,18 +956,16 @@ impl PackageAdapter for AppImageAdapter {
         package_id: &str,
         callback: Option<ProgressCallback>,
     ) -> Result<OperationResult, Box<dyn Error + Send + Sync>> {
-        let progress_task = start_staged_progress(
-            callback.clone(),
-            0.1,
-            0.9,
-            0.08,
-            std::time::Duration::from_millis(650),
-        );
+        let id_clean = package_id.strip_prefix("appimage:").unwrap_or(package_id);
+        let rp = RealProgress::new(callback.clone(), 0.05, 0.95);
+
+        // Stage 1 (real): remove desktop integration, then the binary itself.
         let result = self.uninstall(package_id).await;
-        if let Some(task) = progress_task {
-            task.abort();
-        }
         if result.as_ref().map(|r| r.success).unwrap_or(false) {
+            if id_clean.contains('/') || id_clean.to_lowercase().ends_with(".appimage") {
+                rp.milestone(0.9); // local file removed — real step
+            }
+            rp.finish();
             emit_progress(&callback, 1.0);
         }
         result

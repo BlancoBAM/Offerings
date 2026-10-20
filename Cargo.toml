@@ -31,7 +31,7 @@ rusqlite = { version = "0.30", features = ["bundled"] }
 notify-rust = "4.10"
 
 # HTTP client for adapters
-reqwest = { version = "0.11", features = ["json", "rustls-tls", "blocking"], default-features = false }
+reqwest = { version = "0.11", features = ["json", "rustls-tls", "blocking", "stream"], default-features = false }
 ureq = { version = "2.9", features = ["json"] }
 
 # Standard directories

@@ -20,11 +20,135 @@ pub use soar::SoarAdapter;
 use crate::model::{OperationResult, Package, PackageSource};
 use async_trait::async_trait;
 use std::error::Error;
-use std::time::Duration;
-
+use std::sync::{Arc, Mutex};
 /// Progress callback for long-running operations.
 /// Receives a value from 0.0 to 1.0.
 pub type ProgressCallback = std::sync::Arc<dyn Fn(f32) + Send + Sync>;
+
+/// Extended progress callback carrying a status message alongside the fraction.
+/// Used for database refresh and multi-stage operations that report real
+/// measured progress ("2140 of 6830 rows written").
+pub type DbProgressCallback = std::sync::Arc<dyn Fn(f32, String) + Send + Sync>;
+
+/// Monotonic real-progress window.
+///
+/// Wraps an optional `ProgressCallback` and a `[start, end]` window of the
+/// overall operation. Values pushed into it MUST represent actually observed
+/// facts (tool-reported percentages, completed real sub-steps); the window
+/// clamps and monotonically advances them, so the UI bars never jump backwards.
+pub struct RealProgress {
+    callback: Option<ProgressCallback>,
+    start: f32,
+    end: f32,
+    last: Mutex<f32>,
+}
+
+impl RealProgress {
+    /// Create the tracker for the `[start, end]` window of the whole operation.
+    /// `start` is emitted immediately so the UI shows a live bar right away.
+    pub fn new(callback: Option<ProgressCallback>, start: f32, end: f32) -> Self {
+        let rp = Self {
+            callback,
+            start,
+            end,
+            last: Mutex::new(start),
+        };
+        rp.emit_raw(start);
+        rp
+    }
+
+    fn emit_raw(&self, value: f32) {
+        if let Some(cb) = &self.callback {
+            cb(value.clamp(0.0, 1.0));
+        }
+    }
+
+    /// Push an observed absolute progress value; clamped to [start, end] and
+    /// monotonic (never moves backwards).
+    pub fn set(&self, value: f32) {
+        let clamped = value.clamp(self.start, self.end);
+        let mut last = self.last.lock().unwrap();
+        if clamped > *last {
+            *last = clamped;
+            self.emit_raw(clamped);
+        }
+    }
+
+    /// Push a tool-reported percentage (0.0..=1.0) mapped into the window.
+    pub fn set_percent(&self, percent: f32) {
+        let p = percent.clamp(0.0, 1.0);
+        self.set(self.start + (self.end - self.start) * p);
+    }
+
+    /// A real sub-operation completed ahead of the expected window fraction.
+    pub fn milestone(&self, fraction_of_window: f32) {
+        self.set(self.start + (self.end - self.start) * fraction_of_window.clamp(0.0, 1.0));
+    }
+
+    /// Operation finished successfully.
+    pub fn finish(&self) {
+        self.set(1.0);
+        self.emit_raw(1.0);
+    }
+
+    /// Returns a closure for `run_command_with_stream` that lifts tool-published
+    /// percentages (e.g. "Downloading 45%", "Setup snap ... 78%") into the window.
+    pub fn percent_mapper(
+        &self,
+    ) -> impl Fn(&str, bool) + Send + Sync + use<> {
+        let this = Arc::new(Self {
+            callback: self.callback.clone(),
+            start: self.start,
+            end: self.end,
+            last: Mutex::new(*self.last.lock().unwrap()),
+        });
+        move |line: &str, _is_stderr: bool| {
+            if let Some(p) = extract_percent(line) {
+                this.set_percent(p);
+            }
+        }
+    }
+
+    /// The last emitted raw value.
+    pub fn current(&self) -> f32 {
+        *self.last.lock().unwrap()
+    }
+}
+
+/// Extract a percentage published in a tool output chunk ("45%", "12.5 %").
+/// Returns the fraction (0.0..=1.0) or `None`.
+pub fn extract_percent(line: &str) -> Option<f32> {
+    let chars: Vec<char> = line.chars().collect();
+    for (i, ch) in chars.iter().enumerate() {
+        if *ch == '%' {
+            let mut start = i;
+            let mut saw_digit = false;
+            let mut dot_used = false;
+            while start > 0 {
+                let c = chars[start - 1];
+                if c.is_ascii_digit() {
+                    saw_digit = true;
+                    start -= 1;
+                } else if c == '.' && !dot_used && start > 1 && chars[start - 2].is_ascii_digit() {
+                    dot_used = true;
+                    start -= 1;
+                } else {
+                    break;
+                }
+            }
+            if saw_digit {
+                let s: String = chars[start..i].iter().collect();
+                let s = s.replace(',', "");
+                if let Ok(v) = s.trim().parse::<f32>() {
+                    if (0.0..=100.0).contains(&v) {
+                        return Some(v / 100.0);
+                    }
+                }
+            }
+        }
+    }
+    None
+}
 
 pub fn emit_progress(callback: &Option<ProgressCallback>, progress: f32) {
     if let Some(cb) = callback {
@@ -32,31 +156,27 @@ pub fn emit_progress(callback: &Option<ProgressCallback>, progress: f32) {
     }
 }
 
-pub fn start_staged_progress(
-    callback: Option<ProgressCallback>,
-    start: f32,
-    max_before_finish: f32,
-    step: f32,
-    interval: Duration,
-) -> Option<tokio::task::JoinHandle<()>> {
-    emit_progress(&callback, start);
-    callback.map(move |cb| {
-        tokio::spawn(async move {
-            let mut progress = start;
-            loop {
-                tokio::time::sleep(interval).await;
-                progress = (progress + step).min(max_before_finish);
-                cb(progress);
-            }
-        })
-    })
-}
-
 /// Common trait for all package adapters
 #[async_trait]
 pub trait PackageAdapter: Send + Sync {
     /// Get the package source type
     fn source(&self) -> PackageSource;
+
+    /// Downcast hook so the backend can reach concrete adapter extensions
+    /// (e.g. the Direct Release adapter's "add any repo" flow).
+    fn as_any(&self) -> &dyn std::any::Any;
+
+    /// Whether this adapter's `list_available()` belongs in the browse
+    /// catalogue. The store's central concept: the OFFLINE unified catalogue
+    /// (one deduplicated desktop-app entry per app) is the single browse
+    /// source. Runtime package managers (flatpak/snap/am/brew) still serve
+    /// installed-state tracking, install/uninstall and update checks — they
+    /// just must not re-flood the browse grid with their own raw listings
+    /// (which re-introduce CLI plumbing and duplicates that the catalogue
+    /// builder already filtered out).
+    fn contributes_browse(&self) -> bool {
+        true
+    }
 
     /// Check if this adapter is available on the system
     async fn is_available(&self) -> bool;

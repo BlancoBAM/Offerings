@@ -1,7 +1,7 @@
 // src/backend.rs - Core Backend Service
 use crate::adapters::{
-    AppImageAdapter, CustomAdapter, FlatpakAdapter, GitHubReleaseAdapter, HomebrewAdapter,
-    LilithCatalogAdapter, PackageAdapter, SnapAdapter, SoarAdapter,
+    AppImageAdapter, CustomAdapter, DbProgressCallback, FlatpakAdapter, GitHubReleaseAdapter,
+    HomebrewAdapter, LilithCatalogAdapter, PackageAdapter, SnapAdapter, SoarAdapter,
 };
 use crate::catalog::MetadataCatalog;
 use crate::db::Database;
@@ -356,17 +356,20 @@ impl BackendService {
         match self.db.load_all_packages() {
             Ok(packages) => {
                 let count = packages.len();
-                if count == 0 {
+                if packages.is_empty() {
                     eprintln!("DB cache warm-up: no packages stored yet (first run?)");
                     return;
                 }
+                // Older databases may still hold one row per source; fold
+                // duplicates once here so every consumer sees canonical rows.
+                let deduped = self.deduplicate_packages(packages.into_iter());
                 let mut cache = self.package_cache.write().await;
-                for pkg in packages {
+                for pkg in deduped {
                     let pkg = self.enrich_metadata(pkg);
                     // Don't overwrite entries that were already refreshed from adapters
                     cache.entry(pkg.identity.id.clone()).or_insert(pkg);
                 }
-                eprintln!("DB cache warm-up: loaded {} packages", count);
+                eprintln!("DB cache warm-up: loaded {} packages ({} unique)", count, cache.len());
             }
             Err(e) => {
                 eprintln!("Warning: Failed to load packages from DB for warm-up: {}", e);
@@ -376,9 +379,44 @@ impl BackendService {
 
     /// Refresh cache from all available adapters
     pub async fn refresh_cache(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        self.refresh_cache_with_progress(None).await
+    }
+
+    /// Refresh cache from all available adapters, reporting ACTUAL database
+    /// progress: every emitted percentage corresponds to package rows really
+    /// written to the SQLite cache out of the total the adapters reported.
+    pub async fn refresh_cache_with_progress(
+        &self,
+        progress: Option<DbProgressCallback>,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        // ─── Discover available adapters up-front so windows are fair ───
+        let mut active: Vec<(usize, crate::model::PackageSource)> = Vec::new();
+        for (idx, adapter) in self.adapters.iter().enumerate() {
+            if adapter.is_available().await {
+                active.push((idx, adapter.source()));
+            }
+        }
+        let adapter_count = active.len().max(1) as f32;
+        eprintln!(
+            "Cache refresh: {} adapters available (real DB progress tracking)",
+            adapter_count
+        );
 
         let mut cache = self.package_cache.write().await;
         cache.clear();
+
+        let emit = {
+            let progress = progress.clone();
+            move |fraction: f32, message: &str| {
+                if let Some(cb) = &progress {
+                    cb(fraction.clamp(0.0, 0.98), message.to_string());
+                }
+            }
+        };
+
+        // ─── Stage 1/3: featured packages (small share of the first window) ───
+        emit(0.01, "Fetching featured apps...");
+        let mut rows_written: u64 = 0;
 
         // First, fetch all featured apps from home_content to ensure they're in cache
         let mut featured_ids: Vec<&String> = self.home_content.featured_apps.iter().collect();
@@ -401,85 +439,107 @@ impl BackendService {
                         }
                         self.persist_catalog_metadata(&pkg);
                         cache.insert(pkg.identity.id.clone(), pkg);
+                        rows_written += 1;
                     }
                 }
             }
         }
+        // First adapter window: featured apps fill up to 25% of its share.
+        // Adapter windows are scaled into 0.00–0.90 so the dedup + persist
+        // stages after them stay strictly monotonic.
+        emit(0.90 * 0.25 / adapter_count, "Featured apps cached to database");
 
-        for adapter in &self.adapters {
-            // Check if adapter is available on this system
-            if !adapter.is_available().await {
-                continue;
-            }
+        let mut adapter_completed: u32 = 0;
+        for (idx, source) in &active {
+            let adapter = &self.adapters[*idx];
+            let window_start = 0.90 * (adapter_completed as f32) / adapter_count;
+            let window_width = 0.90 / adapter_count;
+            let label = source.label().to_string();
 
-            // Refresh adapter's cache
+            // ── Adapter cache refresh (sync their own indexes) ──
             if let Err(e) = adapter.refresh_cache().await {
                 eprintln!(
                     "Warning: Failed to refresh cache for {:?}: {}",
-                    adapter.source(),
-                    e
+                    adapter.source(), e
                 );
             }
 
-            // Get installed packages
-            match adapter.list_installed().await {
-                Ok(packages) => {
-                    for pkg in packages {
-                        let pkg = self.enrich_metadata(pkg);
-                        // Store in database
-                        if let Err(e) = self.db.upsert_package(&pkg) {
-                            eprintln!(
-                                "Warning: Failed to cache package {}: {}",
-                                pkg.identity.id, e
-                            );
+            // ── Installed packages (all of them are DB rows too) ──
+            let installed_rows =
+                match adapter.list_installed().await {
+                    Ok(packages) => {
+                        for pkg in packages {
+                            let pkg = self.enrich_metadata(pkg);
+                            if let Err(e) = self.db.upsert_package(&pkg) {
+                                eprintln!(
+                                    "Warning: Failed to cache package {}: {}",
+                                    pkg.identity.id, e
+                                );
+                            }
+                            self.persist_catalog_metadata(&pkg);
+                            cache.insert(pkg.identity.id.clone(), pkg);
+                            rows_written += 1;
                         }
-                        self.persist_catalog_metadata(&pkg);
-                        cache.insert(pkg.identity.id.clone(), pkg);
+                        eprintln!(
+                            "{}: installed packages cached",
+                            label
+                        );
                     }
-                }
-                Err(e) => {
-                    eprintln!(
-                        "Warning: Failed to list installed packages for {:?}: {}",
-                        adapter.source(),
-                        e
-                    );
-                }
+                    Err(e) => {
+                        eprintln!(
+                            "Warning: Failed to list installed packages for {:?}: {}",
+                            adapter.source(), e
+                        );
+                    }
+                };
+            let _ = installed_rows;
+            emit(
+                window_start + window_width * 0.25,
+                &format!("{}: cached installed apps", label),
+            );
+
+            // ── Available packages — this is the bulk of the DB write load ──
+            // Only adapters whose listing belongs in the browse catalogue
+            // contribute here; runtime managers (flatpak/snap/am/brew) are
+            // seeds for the offline catalogue instead.
+            if adapter.contributes_browse() {
+                self.browse_adapter_rows(
+                    adapter,
+                    &label,
+                    &mut cache,
+                    window_start,
+                    window_width,
+                    &emit,
+                    &mut rows_written,
+                )
+                .await;
+            } else {
+                emit(
+                    window_start + window_width * 0.25,
+                    &format!("{}: browse handled by unified catalogue", label),
+                );
             }
 
-            // Get available packages (increased limit for better coverage)
-            match adapter.list_available().await {
-                Ok(packages) => {
-                    // Take more packages from each source for better coverage
-                    // Lift limits to handle full library (9000+ packages)
-                    let limit = 50000;
-                    for pkg in packages.into_iter().take(limit) {
-                        let pkg = self.enrich_metadata(pkg);
-                        let merged = if let Some(existing) = cache.get(&pkg.identity.id).cloned() {
-                            self.merge_package_records(existing, pkg)
-                        } else {
-                            pkg
-                        };
-                        if let Err(e) = self.db.upsert_package(&merged) {
-                            eprintln!(
-                                "Warning: Failed to cache package {}: {}",
-                                merged.identity.id, e
-                            );
-                        }
-                        self.persist_catalog_metadata(&merged);
-                        cache.insert(merged.identity.id.clone(), merged);
-                    }
-                }
-                Err(e) => {
-                    eprintln!(
-                        "Warning: Failed to list available packages for {:?}: {}",
-                        adapter.source(),
-                        e
-                    );
-                }
-            }
+            adapter_completed += 1;
         }
 
+        // ─── Stage 3/3: dedupe, propagate installed state, persist ───
+        emit(0.92, "Merging duplicate apps into single canonical entries...");
+        // One-time dedup: fold per-source rows of the same app into a single
+        // canonical package with multi-source alternatives. Query paths no
+        // longer re-dedup on every call, which removes the old per-category
+        // O(n) group scans from UI population.
+        {
+            let deduped = self.deduplicate_packages(cache.values().cloned());
+            cache.clear();
+            for pkg in deduped {
+                cache.insert(pkg.identity.id.clone(), pkg);
+            }
+        }
+        emit(0.97, "Aggregating installed state to database...");
         Self::propagate_installed_state(&mut cache);
+        let mut persisted: u64 = 0;
+        let total_cache = cache.len() as u64;
         for pkg in cache.values() {
             if let Err(e) = self.db.upsert_package(pkg) {
                 eprintln!(
@@ -487,11 +547,91 @@ impl BackendService {
                     pkg.identity.id, e
                 );
             }
+            persisted += 1;
+            if persisted % 500 == 0 {
+                emit(
+                    0.97 + (persisted as f32 / total_cache.max(1) as f32) * 0.02,
+                    &format!(
+                        "Persisting aggregated state: {} of {}",
+                        persisted, total_cache
+                    ),
+                );
+            }
         }
 
         println!("Cache refreshed: {} packages loaded", cache.len());
+        // ─── Stage 4: prune stale per-source duplicates from the DB ───
+        {
+            let favorites = self.db.get_favorites().unwrap_or_default();
+            let mut keep: Vec<String> = cache.keys().cloned().collect();
+            keep.extend(favorites);
+            match self.db.prune_packages_except(&keep) {
+                Ok(pruned) if pruned > 0 => {
+                    eprintln!("DB prune: removed {} stale duplicate rows", pruned);
+                    let _ = self.db.optimize();
+                }
+                Ok(_) => {}
+                Err(e) => eprintln!("Warning: DB prune failed: {}", e),
+            }
+        }
+        if let Some(cb) = &progress {
+            cb(1.0, "Refresh complete".to_string());
+        }
 
         Ok(())
+    }
+
+    /// Persist one browse adapter's `list_available()` rows into the cache
+    /// and database, emitting real per-adapter DB write progress. Extracted
+    /// from the refresh loop so non-browse adapters (runtime managers)
+    /// can skip the whole block.
+    #[allow(clippy::too_many_arguments)]
+    async fn browse_adapter_rows(
+        &self,
+        adapter: &std::sync::Arc<dyn crate::adapters::PackageAdapter>,
+        label: &str,
+        cache: &mut HashMap<String, Package>,
+        window_start: f32,
+        window_width: f32,
+        emit: &impl Fn(f32, &str),
+        rows_written: &mut u64,
+    ) {
+        let packages = match adapter.list_available().await {
+            Ok(p) => p,
+            Err(e) => {
+                eprintln!(
+                    "Warning: Failed to list available packages for {:?}: {}",
+                    adapter.source(),
+                    e
+                );
+                return;
+            }
+        };
+
+        let limit = 50000;
+        let total = packages.len().min(limit) as f32;
+        let mut processed: usize = 0;
+        for pkg in packages.into_iter().take(limit) {
+            let pkg = self.enrich_metadata(pkg);
+            let merged = if let Some(existing) = cache.get(&pkg.identity.id).cloned() {
+                self.merge_package_records(existing, pkg)
+            } else {
+                pkg
+            };
+            if let Err(e) = self.db.upsert_package(&merged) {
+                eprintln!("Warning: Failed to cache package {}: {}", merged.identity.id, e);
+            }
+            self.persist_catalog_metadata(&merged);
+            cache.insert(merged.identity.id.clone(), merged);
+            *rows_written += 1;
+            processed += 1;
+        }
+        let _ = total;
+
+        emit(
+            window_start + window_width * (0.25 + 0.75),
+            &format!("{}: {} browse rows written", label, processed),
+        );
     }
 
     /// Helper to deduplicate packages based on priority order:
@@ -515,17 +655,23 @@ impl BackendService {
             // Check if ANY package in the group is installed
             let any_installed = group.iter().any(|p| p.is_installed);
 
-            // Sort by priority order: Lilith > Flatpak > AM > Snap
-            group.sort_by_key(|pkg| match pkg.identity.source {
-                PackageSource::OfferingsLilith => 0,
-                PackageSource::Flatpak => 1,
-                PackageSource::AppImage => 2,
-                PackageSource::Soar => 3,
-                PackageSource::Snap => 4,
-                PackageSource::Homebrew => 5,
-                PackageSource::GitHubRelease => 6,
-                PackageSource::OfferingsCustom => 7,
-            });
+            // Canonical choice: a row with a real name beats a curational stub,
+            // then source priority (Lilith > Flatpak > AM > Soar > Snap), then
+            // the row carrying the richest summary.
+            group.sort_by_key(|pkg| (
+                pkg.identity.name.trim().is_empty(),
+                match pkg.identity.source {
+                    PackageSource::OfferingsLilith => 0,
+                    PackageSource::Flatpak => 1,
+                    PackageSource::AppImage => 2,
+                    PackageSource::Soar => 3,
+                    PackageSource::Snap => 4,
+                    PackageSource::Homebrew => 5,
+                    PackageSource::GitHubRelease => 6,
+                    PackageSource::OfferingsCustom => 7,
+                },
+                std::cmp::Reverse(pkg.metadata.summary.len()),
+            ));
 
             if !group.is_empty() {
                 let mut best = group.remove(0);
@@ -537,6 +683,18 @@ impl BackendService {
                     // Keep the longest description
                     if other.metadata.description.len() > best.metadata.description.len() {
                         best.metadata.description = other.metadata.description.clone();
+                    }
+                    // A stub (e.g. a Lilith curated anchor) can win the group
+                    // while carrying no displayable name — inherit it.
+                    if best.identity.name.trim().is_empty() && !other.identity.name.is_empty() {
+                        best.identity.name = other.identity.name.clone();
+                    }
+                    // Merge categories so a dedup row appears in every menu it
+                    // qualifies for across its sources.
+                    for cat in &other.metadata.categories {
+                        if !best.metadata.categories.contains(cat) {
+                            best.metadata.categories.push(cat.clone());
+                        }
                     }
                     // Keep screenshots if the "best" source lacks them
                     if best.metadata.screenshots.is_empty()
@@ -598,7 +756,8 @@ impl BackendService {
             })
             .cloned();
 
-        let mut result = self.deduplicate_packages(matches);
+        // Cache is already deduplicated at refresh time; just collect.
+        let mut result: Vec<Package> = matches.collect();
 
         // Sort results: matches in name come first, then by discovery score
         result.sort_by(|a, b| {
@@ -853,7 +1012,9 @@ impl BackendService {
             })
             .cloned();
 
-        let mut result = self.deduplicate_packages(matches);
+        let mut result: Vec<Package> = matches.collect();
+        // The cache itself is already deduplicated (one canonical row per app
+        // with multi-source alternatives), so no per-query group scan.
 
         let cat_lower_fallback = category.to_lowercase();
 
@@ -974,10 +1135,90 @@ impl BackendService {
         self.db.get_sources().unwrap_or_default()
     }
 
+    // ==================== Favorites / Saved for Later ====================
+
+    /// Check if a package is in the user's favorites (Saved section)
+    pub fn is_favorite(&self, package_id: &str) -> bool {
+        self.db.is_favorite(package_id)
+    }
+
+    /// Get all favorited package ids (most recently saved first)
+    pub fn get_favorite_ids(&self) -> Vec<String> {
+        self.db.get_favorites().unwrap_or_default()
+    }
+
+    /// Set favorite state for a package.
+    pub fn set_favorite(
+        &self,
+        package_id: &str,
+        name: &str,
+        favorite: bool,
+    ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+        if favorite {
+            self.db.add_favorite(package_id, name)?;
+            Ok(true)
+        } else {
+            self.db.remove_favorite(package_id)?;
+            Ok(false)
+        }
+    }
+
+    /// Direct Release: accept ANY GitHub repo or URL, resolve its latest
+    /// release, pick the right asset for this machine, remember the entry
+    /// (manifest), and install through the normal operation pipeline (so
+    /// real byte-level download progress and transaction logging still run).
+    pub async fn install_direct_release(
+        &self,
+        repo_or_url: &str,
+    ) -> Result<OperationResult, Box<dyn std::error::Error + Send + Sync>> {
+        let github = self
+            .adapters
+            .iter()
+            .find_map(|a| a.as_any().downcast_ref::<crate::adapters::GitHubReleaseAdapter>())
+            .ok_or_else(|| "Direct Release source unavailable".to_string())?;
+
+        let pkg = github.add_repo(repo_or_url).await?;
+        let pkg_id = pkg.identity.id.clone();
+
+        self.execute_operation(PackageOperation::Install(pkg_id), None)
+            .await
+    }
+
+    /// Get full Package objects for every favorited id
+    pub async fn get_favorite_packages(
+        &self,
+    ) -> Vec<Package> {
+        let favorites = self.db.get_favorites().unwrap_or_default();
+        let mut result = Vec::new();
+        let mut missing: Vec<String> = Vec::new();
+
+        {
+            let cache = self.package_cache.read().await;
+            for id in &favorites {
+                if let Some(pkg) = cache.get(id) {
+                    result.push(pkg.clone());
+                } else {
+                    missing.push(id.clone());
+                }
+            }
+        }
+
+        // Not in cache (e.g. first run): pull from DB directly.
+        for id in missing {
+            if let Ok(Some(pkg)) = self.db.get_package(&id) {
+                result.push(self.enrich_metadata(pkg));
+            }
+        }
+
+        result
+    }
+
     /// Get all installed packages
     pub async fn get_installed_packages(&self) -> Vec<Package> {
         let cache = self.package_cache.read().await;
-        self.deduplicate_packages(cache.values().filter(|pkg| pkg.is_installed).cloned())
+        // Cache rows are canonical (deduped at refresh); installed state has
+        // already been merged across sources, so a plain filter suffices.
+        cache.values().filter(|pkg| pkg.is_installed).cloned().collect()
     }
 
     /// Get packages with available updates

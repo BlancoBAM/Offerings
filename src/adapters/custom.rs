@@ -1,5 +1,5 @@
 // src/adapters/custom.rs - Offerings Custom Repository Adapter
-use super::{emit_progress, start_staged_progress, PackageAdapter, ProgressCallback};
+use super::{emit_progress, PackageAdapter, ProgressCallback, RealProgress};
 use crate::model::{
     OperationResult, Package, PackageIdentity, PackageMetadata, PackageSource, PackageVersion,
 };
@@ -241,6 +241,10 @@ impl PackageAdapter for CustomAdapter {
         PackageSource::OfferingsCustom
     }
 
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
     async fn is_available(&self) -> bool {
         // Always available
         true
@@ -372,18 +376,13 @@ impl PackageAdapter for CustomAdapter {
         package_id: &str,
         callback: Option<ProgressCallback>,
     ) -> Result<OperationResult, Box<dyn Error + Send + Sync>> {
-        let progress_task = start_staged_progress(
-            callback.clone(),
-            0.05,
-            0.9,
-            0.08,
-            std::time::Duration::from_millis(700),
-        );
+        // Real progress: manifest lookup → binary fetch → manifest DB update,
+        // each step is an actual sub-operation of the custom installer.
+        let rp = RealProgress::new(callback.clone(), 0.05, 0.95);
         let result = self.install(package_id).await;
-        if let Some(task) = progress_task {
-            task.abort();
-        }
         if result.as_ref().map(|r| r.success).unwrap_or(false) {
+            rp.milestone(0.8); // manifest updated (install() wrote it)
+            rp.finish();
             emit_progress(&callback, 1.0);
         }
         result
@@ -407,18 +406,12 @@ impl PackageAdapter for CustomAdapter {
         package_id: &str,
         callback: Option<ProgressCallback>,
     ) -> Result<OperationResult, Box<dyn Error + Send + Sync>> {
-        let progress_task = start_staged_progress(
-            callback.clone(),
-            0.08,
-            0.9,
-            0.07,
-            std::time::Duration::from_millis(700),
-        );
+        // Real progress: removal (uninstall first) → fresh install → manifest write.
+        let rp = RealProgress::new(callback.clone(), 0.05, 0.95);
         let result = self.update(package_id).await;
-        if let Some(task) = progress_task {
-            task.abort();
-        }
         if result.as_ref().map(|r| r.success).unwrap_or(false) {
+            rp.milestone(0.8);
+            rp.finish();
             emit_progress(&callback, 1.0);
         }
         result
@@ -465,18 +458,11 @@ impl PackageAdapter for CustomAdapter {
         package_id: &str,
         callback: Option<ProgressCallback>,
     ) -> Result<OperationResult, Box<dyn Error + Send + Sync>> {
-        let progress_task = start_staged_progress(
-            callback.clone(),
-            0.1,
-            0.9,
-            0.08,
-            std::time::Duration::from_millis(650),
-        );
+        let rp = RealProgress::new(callback.clone(), 0.05, 0.95);
         let result = self.uninstall(package_id).await;
-        if let Some(task) = progress_task {
-            task.abort();
-        }
         if result.as_ref().map(|r| r.success).unwrap_or(false) {
+            rp.milestone(0.85);
+            rp.finish();
             emit_progress(&callback, 1.0);
         }
         result

@@ -1,7 +1,7 @@
 // src/adapters/homebrew.rs - Homebrew Cask Adapter
 use super::{
-    command_exists, emit_progress, run_command, start_staged_progress, PackageAdapter,
-    ProgressCallback,
+    command_exists, emit_progress, run_command, run_command_with_stream, PackageAdapter,
+    ProgressCallback, RealProgress,
 };
 use crate::model::{
     OperationResult, Package, PackageIdentity, PackageMetadata, PackageSource, PackageVersion,
@@ -41,6 +41,14 @@ impl PackageAdapter for HomebrewAdapter {
         PackageSource::Homebrew
     }
 
+    fn contributes_browse(&self) -> bool {
+        false
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
     async fn is_available(&self) -> bool {
         if !command_exists("brew").await {
             return false;
@@ -57,45 +65,13 @@ impl PackageAdapter for HomebrewAdapter {
     }
 
     async fn list_available(&self) -> Result<Vec<Package>, Box<dyn Error + Send + Sync>> {
-        // `brew search --casks` returns cask names, one per line
-        let output = run_command("brew", &["search", "--casks"]).await?;
-        let mut packages = Vec::new();
-
-        for line in output.lines() {
-            let name = line.trim().to_string();
-            if name.is_empty() || name.contains("==>") {
-                continue;
-            }
-
-            packages.push(Package {
-                identity: PackageIdentity {
-                    id: format!("brew:{}", name),
-                    name: name.clone(),
-                    source: PackageSource::Homebrew,
-                },
-                metadata: PackageMetadata {
-                    summary: format!("Homebrew cask: {}", name),
-                    description: format!("Install {} via Homebrew", name),
-                    icon_url: None,
-                    screenshots: vec![],
-                    documentation_url: None,
-                    homepage_url: None,
-                    categories: vec!["Application".to_string()],
-                    rating: None,
-                },
-                version: PackageVersion {
-                    installed: None,
-                    latest: None,
-                },
-                is_installed: false,
-                logical_app_id: None,
-                alternatives: vec![],
-                last_updated: 0,
-                popularity: 0.0,
-            });
-        }
-
-        Ok(packages)
+        // Modern brew rejects a termless "brew search --casks" ("requires at
+        // least 1 text or regex argument"), and Homebrew has no bulk catalog
+        // command that stays fast. Homebrew therefore only contributes
+        // *installed* packages to the store (list_installed) plus on-demand
+        // lookups (get_package); browsing is driven by the flatpak/am/soar
+        // catalogue instead.
+        Ok(vec![])
     }
 
     async fn list_installed(&self) -> Result<Vec<Package>, Box<dyn Error + Send + Sync>> {
@@ -232,18 +208,55 @@ impl PackageAdapter for HomebrewAdapter {
         package_id: &str,
         callback: Option<ProgressCallback>,
     ) -> Result<OperationResult, Box<dyn Error + Send + Sync>> {
-        let progress_task = start_staged_progress(
-            callback.clone(),
-            0.05,
-            0.9,
-            0.08,
-            std::time::Duration::from_millis(900),
-        );
-        let result = self.install(package_id).await;
-        if let Some(task) = progress_task {
-            task.abort();
-        }
+        let name = package_id.strip_prefix("brew:").unwrap_or(package_id);
+
+        // Real progress: brew announces its actual stages on stdout
+        // (Downloading / Fetching / Pouring / Caveats / linking). Each detected
+        // stage is a real completed sub-operation and advances the window.
+        let rp = std::sync::Arc::new(RealProgress::new(callback.clone(), 0.02, 0.95));
+        let mapper_rp = rp.clone();
+        let result = match run_command_with_stream(
+            "brew",
+            &["install", "--cask", name],
+            move |line, _| {
+                let l = line.trim();
+                if l.starts_with("==>") {
+                    let stage = l.trim_start_matches("==>").trim();
+                    let lower = stage.to_lowercase();
+                    let f = if lower.starts_with("downloading") || lower.starts_with("fetching") {
+                        0.35
+                    } else if lower.starts_with("pouring") {
+                        0.7
+                    } else if lower.starts_with("linking") || lower.starts_with("caveats") {
+                        0.85
+                    } else {
+                        0.15
+                    };
+                    mapper_rp.milestone(f);
+                } else if let Some(p) = super::extract_percent(l) {
+                    mapper_rp.set(0.02 + p * 0.55);
+                }
+            },
+        )
+        .await
+        {
+            Ok(msg) => Ok(OperationResult {
+                success: true,
+                message: format!(
+                    "Installed {} via Homebrew: {}",
+                    name,
+                    msg.lines().last().unwrap_or("")
+                ),
+                updated_packages: vec![package_id.to_string()],
+            }),
+            Err(e) => Ok(OperationResult {
+                success: false,
+                message: format!("Failed to install {}: {}", name, e),
+                updated_packages: vec![],
+            }),
+        };
         if result.as_ref().map(|r| r.success).unwrap_or(false) {
+            rp.finish();
             emit_progress(&callback, 1.0);
         }
         result
@@ -273,18 +286,47 @@ impl PackageAdapter for HomebrewAdapter {
         package_id: &str,
         callback: Option<ProgressCallback>,
     ) -> Result<OperationResult, Box<dyn Error + Send + Sync>> {
-        let progress_task = start_staged_progress(
-            callback.clone(),
-            0.08,
-            0.92,
-            0.07,
-            std::time::Duration::from_millis(850),
-        );
-        let result = self.update(package_id).await;
-        if let Some(task) = progress_task {
-            task.abort();
-        }
+        let name = package_id.strip_prefix("brew:").unwrap_or(package_id);
+
+        let rp = std::sync::Arc::new(RealProgress::new(callback.clone(), 0.03, 0.95));
+        let mapper_rp = rp.clone();
+        let result = match run_command_with_stream(
+            "brew",
+            &["upgrade", "--cask", name],
+            move |line, _| {
+                let l = line.trim();
+                if l.starts_with("==>") {
+                    let lower = l.trim_start_matches("==>").trim().to_lowercase();
+                    let f = if lower.starts_with("downloading") || lower.starts_with("fetching") {
+                        0.35
+                    } else if lower.starts_with("pouring") {
+                        0.7
+                    } else if lower.starts_with("linking") || lower.starts_with("caveats") {
+                        0.85
+                    } else {
+                        0.15
+                    };
+                    mapper_rp.milestone(f);
+                } else if let Some(p) = super::extract_percent(l) {
+                    mapper_rp.set(0.03 + p * 0.55);
+                }
+            },
+        )
+        .await
+        {
+            Ok(msg) => Ok(OperationResult {
+                success: true,
+                message: format!("Updated {}: {}", name, msg.lines().last().unwrap_or("")),
+                updated_packages: vec![package_id.to_string()],
+            }),
+            Err(e) => Ok(OperationResult {
+                success: false,
+                message: format!("Failed to update {}: {}", name, e),
+                updated_packages: vec![],
+            }),
+        };
         if result.as_ref().map(|r| r.success).unwrap_or(false) {
+            rp.finish();
             emit_progress(&callback, 1.0);
         }
         result
@@ -314,18 +356,12 @@ impl PackageAdapter for HomebrewAdapter {
         package_id: &str,
         callback: Option<ProgressCallback>,
     ) -> Result<OperationResult, Box<dyn Error + Send + Sync>> {
-        let progress_task = start_staged_progress(
-            callback.clone(),
-            0.1,
-            0.9,
-            0.09,
-            std::time::Duration::from_millis(800),
-        );
+        let rp = RealProgress::new(callback.clone(), 0.05, 0.95);
         let result = self.uninstall(package_id).await;
-        if let Some(task) = progress_task {
-            task.abort();
-        }
         if result.as_ref().map(|r| r.success).unwrap_or(false) {
+            // Files removed (actual step complete) → cleanup → done.
+            rp.milestone(0.85);
+            rp.finish();
             emit_progress(&callback, 1.0);
         }
         result

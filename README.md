@@ -21,19 +21,31 @@
 > [!WARNING]
 > **This is a beta release.** I make no guarantees that the app works as intended at this time, and welcome testing and issues. Please give your feedback! It definitely needs some polish and code cleanup — I'm sure that's not all. This was designed for an upcoming distro named **Lilith Linux**, after the demoness mythology, designed for someone specific and the theming reflects the demonic/satanic-ish theming of the distro. It's built in Rust, as is pretty much everything I write these days, with [Slint](https://slint.dev/) for the GUI.
 
-**Offerings** is a unified GUI interface for easy desktop app management designed for Lilith Linux. It combines multiple package sources into a single, beautiful interface, allowing users to discover, install, and manage applications from Flatpak, Snap, AppImage, SOAR/PkgForge, and GitHub Releases. Catalogue of over 9,000 apps!
+**Offerings** is a unified GUI interface for easy desktop app management designed for Lilith Linux. It combines multiple package sources into a single, beautiful interface, allowing users to discover, install, and manage applications from Flatpak, Snap, AppImage, SOAR/PkgForge, and Direct Releases (GitHub binaries). Catalogue of over 11,000 desktop apps!
 
 ## ✨ Features
 
-- 📦 **Multi-Source Support**: Seamless integration with Flatpak, Snap, AppImage (AM), SOAR/pkgforge, and GitHub Releases.
+- 🗃️ **One Catalogue, Many Sources**: the store serves a single deduplicated
+  desktop-app catalogue (Flathub AppStream, AM/AppImage databases,
+  pkgforge/soarpkgs GUI formats, spm feed, appbundle) rebuilt automatically by
+  `tools/update_catalogue.py` (systemd user timer included). Package managers
+  are only used for installing, uninstalling and tracking what's actually on
+  your system — never for re-flooding the browse grid.
+- 📦 **Multi-Source Support**: Seamless integration with Flatpak, Snap, AppImage (AM), SOAR/pkgforge, Homebrew, and Direct Release (GitHub binaries).
 - 🎨 **Modern Interface**: Built with Slint for a fast, responsive, and native-feeling experience.
 - 🛡️ **Lilith Curated Section**: Hand-picked applications specifically chosen for Lilith Linux users.
 - 🔄 **Automated Updates**: Background synchronization ensures you always have the latest versions and package metadata.
 - 🔍 **Powerful Search**: Fuzzy matching across all enabled sources to find exactly what you need.
-- 🗂️ **Smart Categorization**: Automated classification of thousands of apps into intuitive categories.
+- 🗂️ **Smart Categorization**: Automated classification of thousands of apps into intuitive categories following the freedesktop Main Categories spec.
+- ❤️ **Saved for Later**: Infernal heart toggle on any app saves it to your personal Saved shelf.
+- ⚡ **Direct Release**: enter any `owner/repo` or github.com URL and Offerings picks and installs the right release asset for your machine.
+- 📊 **Honest Progress**: install/uninstall/refresh bars show real percentages — byte counts for downloads, actual task completion for snaps, and real database rows written during refreshes.
+- 🪟 **Tiling-Friendly Layout**: the app grid reflows dynamically as the window resizes (cosmic tiling ready).
 
 >[!NOTE]
-As of yet,I haven't taken the time to manually categorize packages, so Qwen automated the process, and (go figure) there are errors with a model performing the task. For example, titles containing 'mAIl are placed in the AI tab,and Miscellaneous has 3,000+ apps. Help is more than welcome!
+>Flathub apps (≈3,300) now carry their real AppStream categories. The portable
+>(AM/pkgforge/appbundle) rows are still auto-categorized, so the odd misfile
+>remains — help is more than welcome!
 
 - ⚡ **Performance First**: Efficient SQLite-backed caching and incremental loading for smooth browsing of massive catalogs.
 
@@ -79,7 +91,8 @@ Offerings supports the following sources out of the box:
 - **Snap Store** (Snap)
 - **AM / AppImage** (AppImage)
 - **PkgForge** (SOAR)
-- **GitHub Releases**
+- **Homebrew**
+- **Direct Release** (GitHub binaries — enter any repo or URL)
 
 ## Credits and Appreciation
 

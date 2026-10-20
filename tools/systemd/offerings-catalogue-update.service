@@ -1,0 +1,11 @@
+[Unit]
+Description=Offerings store — deduplicated desktop-app catalogue rebuild
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+# %h expands to the invoking user's home directory (systemd Specifier).
+# Adjust the repo path after cloning/pinning a fixed location.
+ExecStart=/usr/bin/env python3 %h/Offerings/tools/update_catalogue.py
+EOF

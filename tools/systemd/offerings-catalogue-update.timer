@@ -1,0 +1,13 @@
+[Unit]
+Description=Offerings catalogue weekly rebuild
+
+[Timer]
+# Weekly rebuild keeps the catalogue fresh without hammering upstreams.
+OnCalendar=weekly
+RandomizedDelaySec=2h
+# Catch up on a missed run after reboot/sleep.
+Persistent=true
+Unit=offerings-catalogue-update.service
+
+[Install]
+WantedBy=timers.target

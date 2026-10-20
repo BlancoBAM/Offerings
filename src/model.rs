@@ -43,7 +43,7 @@ impl PackageSource {
             Self::Soar => "SOAR / PkgForge",
             Self::Snap => "Snap",
             Self::Homebrew => "Homebrew",
-            Self::GitHubRelease => "GitHub Release",
+            Self::GitHubRelease => "Direct Release",
             Self::OfferingsCustom => "Custom",
             Self::OfferingsLilith => "Lilith",
         }
@@ -56,7 +56,7 @@ impl PackageSource {
             Self::Soar => "package-x-generic",
             Self::Snap => "snap-symbolic",
             Self::Homebrew => "package-x-generic",
-            Self::GitHubRelease => "system-software-install",
+            Self::GitHubRelease => "application-x-executable",
             Self::OfferingsCustom => "emblem-package",
             Self::OfferingsLilith => "emblem-favorite",
         }

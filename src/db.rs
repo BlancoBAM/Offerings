@@ -37,6 +37,11 @@ impl Database {
         }
 
         let conn = Connection::open(path)?;
+        // Bulk-write friendly settings: WAL lets the refresh upsert loop
+        // stream thousands of rows without fighting readers; NORMAL keeps
+        // durability without a fsync per row.
+        let _ = conn.pragma_update(None, "journal_mode", "WAL");
+        let _ = conn.pragma_update(None, "synchronous", 1usize);
         let db = Self {
             conn: Mutex::new(conn),
             path: path.clone(),
@@ -145,6 +150,13 @@ impl Database {
                 package_id TEXT PRIMARY KEY,
                 last_checked INTEGER NOT NULL,
                 status TEXT
+            );
+
+            -- User favorites ("saved for later" hearts)
+            CREATE TABLE IF NOT EXISTS favorites (
+                package_id TEXT PRIMARY KEY,
+                name TEXT,
+                added_at INTEGER NOT NULL
             );
 
             CREATE TABLE IF NOT EXISTS metadata_catalog (
@@ -368,6 +380,54 @@ impl Database {
         Ok(())
     }
 
+    /// Prune packages that are no longer canonical cache rows.
+    ///
+    /// After the refresh dedup pass only one row per app survives; older
+    /// per-source duplicates otherwise linger in SQLite forever (search /
+    /// fallback reads would keep surfacing them). `keep` must contain every
+    /// canonical id AND every favorite id (a favorite may reference an
+    /// alternative source id that still has install metadata worth keeping).
+    pub fn prune_packages_except(&self, keep: &[String]) -> SqliteResult<usize> {
+        let conn = self.conn.lock().unwrap();
+        let mut pruned = 0usize;
+        // Compare per-id on the DB side, then delete stale ids in safe
+        // chunks — avoids both the 999-bind limit and NOT-IN logic that
+        // would wipe keep-ids living in a later chunk.
+        let mut all_ids: Vec<String> = Vec::new();
+        {
+            let mut stmt = conn.prepare("SELECT id FROM packages")?;
+            let rows = stmt.query_map([], |row| row.get::<_, String>(0))?;
+            for r in rows {
+                all_ids.push(r?);
+            }
+        }
+        let keep_set: std::collections::HashSet<&str> =
+            keep.iter().map(|s| s.as_str()).collect();
+        let stale: Vec<&String> = all_ids
+            .iter()
+            .filter(|id| !keep_set.contains(id.as_str()))
+            .collect();
+        for chunk in stale.chunks(900) {
+            let placeholders = std::iter::repeat("?")
+                .take(chunk.len())
+                .collect::<Vec<_>>()
+                .join(",");
+            let params: Vec<&str> = chunk.iter().map(|s| s.as_str()).collect();
+            let sql = format!("DELETE FROM packages WHERE id IN ({})", placeholders);
+            pruned += conn.execute(&sql, rusqlite::params_from_iter(params))?;
+        }
+        Ok(pruned)
+    }
+
+    /// Post-prune maintenance: SQLite's standard optimization pass plus a
+    /// vacuum so a big duplicate cleanup actually compacts the file.
+    pub fn optimize(&self) -> SqliteResult<()> {
+        let conn = self.conn.lock().unwrap();
+        let _ = conn.execute_batch("PRAGMA optimize;");
+        let _ = conn.execute_batch("VACUUM;");
+        Ok(())
+    }
+
     pub fn upsert_metadata_entry(&self, entry: &CatalogEntry) -> SqliteResult<()> {
         let conn = self.conn.lock().unwrap();
         let Some(package_id) = entry.package_id.clone() else {
@@ -514,6 +574,60 @@ impl Database {
     }
 
     // Dependency management removed
+
+    // ==================== Favorite Operations ====================
+
+    /// Save an app to the user's favorites ("Saved" section)
+    pub fn add_favorite(&self, package_id: &str, name: &str) -> SqliteResult<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "INSERT INTO favorites (package_id, name, added_at) VALUES (?1, ?2, ?3)
+             ON CONFLICT(package_id) DO NOTHING",
+            params![package_id, name, Self::now()],
+        )?;
+        Ok(())
+    }
+
+    /// Remove an app from the favorites
+    pub fn remove_favorite(&self, package_id: &str) -> SqliteResult<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute("DELETE FROM favorites WHERE package_id = ?1", params![package_id])?;
+        Ok(())
+    }
+
+    /// Get every favorite package id, most recently saved first
+    pub fn get_favorites(&self) -> SqliteResult<Vec<String>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt =
+            conn.prepare("SELECT package_id FROM favorites ORDER BY added_at DESC")?;
+        let rows = stmt
+            .query_map([], |row| row.get::<_, String>(0))?
+            .filter_map(|r| r.ok())
+            .collect();
+        Ok(rows)
+    }
+
+    /// Check whether a package is currently favorited
+    pub fn is_favorite(&self, package_id: &str) -> bool {
+        let conn = self.conn.lock().unwrap();
+        conn.query_row(
+            "SELECT 1 FROM favorites WHERE package_id = ?1",
+            params![package_id],
+            |row| row.get::<_, i32>(0),
+        )
+        .is_ok()
+    }
+
+    /// Toggle favorite state for a package; returns the new state.
+    pub fn toggle_favorite(&self, package_id: &str, name: &str) -> SqliteResult<bool> {
+        if self.is_favorite(package_id) {
+            self.remove_favorite(package_id)?;
+            Ok(false)
+        } else {
+            self.add_favorite(package_id, name)?;
+            Ok(true)
+        }
+    }
 
     // ==================== Transaction Operations ====================
 

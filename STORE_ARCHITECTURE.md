@@ -30,7 +30,7 @@ The long-term source surface is:
 3. `Pacstall`
 4. `Snap`
 5. `Homebrew` formulae/casks that behave like user-facing apps
-6. `GitHub releases` used directly as installable desktop apps in Lilith Linux
+6. `GitHub releases` used directly as installable desktop apps in Lilith Linux (presented as **Direct Release**)
 7. `Lilith curated` packages and app definitions
 
 ## Current Reality
@@ -42,7 +42,7 @@ The current backend has real adapters for:
 - `Pacstall`
 - `Snap`
 - `Homebrew` (cask-focused, wraps `brew` CLI)
-- `GitHub Release` (curated manifest + GitHub API, installs binaries to `~/.local/bin/`)
+- `GitHub Release` — presented as **Direct Release**: user-entered repos/URLs + curated manifest, auto-downloads the right asset for the machine, installs binaries to `~/.local/bin/`
 - `Custom` package definitions
 
 That means the current best bridge for missing sources is:
@@ -99,7 +99,7 @@ Planned expanded priority:
 3. `Pacstall`
 4. `Snap`
 5. `Homebrew`
-6. `GitHub releases`
+6. `Direct Release`
 7. `Lilith curated`
 
 ## UI Direction
@@ -126,3 +126,88 @@ The current theme should stay. The UX should move further toward:
 - Expanded featured app curation across all categories with better app selections
 - Fixed unreachable pattern warning in Flatpak category mapping
 - Reduced dead code warnings from 42 to 38 through targeted `#[allow(dead_code)]` attributes
+
+## Recent Improvements (2026-10-18)
+
+### Catalogue-as-single-browse-source (the store's core architecture)
+
+- The **unified catalogue is the one browse source at runtime**. Adapters for
+  runtime package managers (flatpak, AM, snap, brew) no longer push their raw
+  listings into the browse grid on every refresh — they only serve
+  installed-state tracking, install/uninstall, and update checks
+  (`PackageAdapter::contributes_browse() -> bool`, backend refresh gating).
+- `tools/build_catalogue.py` merges upstream seeds into
+  `assets/metadata-catalog.json`: **10,962 desktop-only entries** with real
+  Flathub AppStream categories, icons and homepages (3,297 fresh Flathub apps
+  parsed from `appstream.xml.gz`), pkgforge desktop container formats
+  (`pkg_type` filter drops the static-binary class), AM databases, appbundle
+  and spm-feed. CLI plumbing (busybox/coreutils tables, portable-CLI list,
+  pkgforge `static` binaries) is filtered out.
+- `tools/update_catalogue.py` (plus `tools/systemd/` user units) refetches
+  every seed automatically — Flathub AppStream, pkgforge/soarpkgs release
+  metadata, AM `x86_64-appimages`/`x86_64-apps`, spm feed — with
+  **never-regress semantics**: failed downloads keep the last seed snapshot,
+  and the rebuild is validated then atomically swapped.
+- The running store fingerprints catalogue files (path + mtime); after an
+  external rebuild the next 🔄 refresh (or app restart) serves the new
+  catalogue with no restart required.
+- Browse rows carry their catalogue `source_ids` as install alternatives
+  (Flathub first), so a failed soar install falls back to the flathub or
+  AM route through the normal pipeline.
+- One-time cache dedup: one canonical row per app with multi-source
+  alternatives; per-source duplicates are pruned from SQLite (stage-4
+  `prune_packages_except`) and WAL/synchronous pragmas speed the bulk write.
+
+### New store catalogue (assets/metadata-catalog.json)
+
+- `tools/build_catalogue.py` merges the raw sources in `NEW-OFFERINGS-CATALOGUE`
+  and live-fetched seeds with unioned freedesktop categories
+  (`main-categories.txt`).
+
+### Favorites ("Saved for later")
+
+- SQLite `favorites` table + `add_favorite` / `remove_favorite` / `get_favorites`
+  / `toggle_favorite` (`db.rs`), surfaced through `BackendService::set_favorite`
+  and friends (`backend.rs`).
+- UI: infernal **heart toggle** in the package detail header (`HeartButton` in
+  `ui/main.slint`), a **Saved** sidebar section with its own view, and a
+  process-wide favorites registry in `main.rs` that stamps the `favorite` flag
+  onto every `PackageInfo` the UI renders.
+
+### Real progress everywhere (no fake staged timers)
+
+- `start_staged_progress` removed from all adapters. New shared helpers:
+  `RealProgress` + `extract_percent` in `src/adapters/mod.rs`.
+- `BackendService::refresh_cache_with_progress(Option<DbProgressCallback>)`
+  reports **actual database rows written** ("N of M rows written", per-adapter
+  windows). The UI refresh button (🔄 in the top bar) forwards every
+  (fraction, status) pair into the `db-refresh-*` properties and shows a live
+  percentage bar.
+- Snap installs/uninstalls poll real `snap change` task completion; GitHub
+  (Direct Release) downloads stream real byte counts; Homebrew parses `==>`
+  milestones and embedded percentages.
+
+### Direct Release source (replaces "GitHub Releases")
+
+- Label renamed to **Direct Release** (`model.rs`); icon + alternative icons
+  updated in the UI.
+- New **"⚡ Direct Release"** sidebar view: type any `owner/repo` or
+  github.com URL → the adapter normalizes it, fetches repo metadata from the
+  GitHub API, auto-picks a platform-appropriate asset pattern
+  (`pick_asset_pattern`), persists the entry in
+  `~/.config/offerings/github_apps.json` (`add_repo`), and installs through the
+  normal pipeline (`BackendService::install_direct_release`) with real download
+  progress.
+- Archived files that don't ship an exact binary name fall back to the
+  archive's single executable (`find_any_executable_recursive`).
+
+### Locally downloaded apps appear automatically
+
+- `AppImageAdapter` now scans `~/.local/bin` too, so apps downloaded by hand
+  or by the Direct Release flow surface in the store as installed.
+
+### Tiling-friendly adaptive layout
+
+- `grid-columns` is now computed live from the window width
+  (5 columns at ~1300px content down to 1), so maximized/tiled windows on
+  cosmic keep an even card grid instead of a fixed 3-column layout.
