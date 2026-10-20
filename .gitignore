@@ -114,6 +114,7 @@ coverage/
 
 # Misc
 *.bak
+*.bak-locale
 *.tmp
 *.backup
 

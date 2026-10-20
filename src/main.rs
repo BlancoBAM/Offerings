@@ -99,6 +99,10 @@ fn strip_html_tags(html: &str) -> String {
     for c in html.chars() {
         if c == '<' {
             in_tag = true;
+            // Tags that separate content (<p>, <br>, <li>…) must leave a
+            // separator behind or adjacent sentences glue into one giant
+            // word and run off the card/detail page edge.
+            clean.push(' ');
         } else if c == '>' {
             in_tag = false;
         } else if !in_tag {
@@ -112,7 +116,24 @@ fn strip_html_tags(html: &str) -> String {
             }
         }
     }
-    clean
+    // Collapse runs of whitespace (including all the separators we inserted)
+    // so paragraphs render normally.
+    let mut out = String::with_capacity(clean.len());
+    let mut pending_space = false;
+    for c in clean.chars() {
+        if c.is_whitespace() {
+            if !out.is_empty() {
+                pending_space = true;
+            }
+        } else {
+            if pending_space {
+                out.push(' ');
+            }
+            pending_space = false;
+            out.push(c);
+        }
+    }
+    out
 }
 
 fn is_placeholder_text(name: &str, summary: &str, description: &str) -> bool {
@@ -346,6 +367,90 @@ fn append_category_packages(packages: Vec<model::Package>) {
     });
 }
 
+/// Open a package's detail page: full-open variant (card click / ←→ nav).
+/// Fetches the package, swaps the detail state on the UI thread and loads
+/// the heavyweight media afterwards.
+fn spawn_open_package(
+    backend: std::sync::Arc<BackendService>,
+    tokio_handle: tokio::runtime::Handle,
+    ui_weak: slint::Weak<MainWindow>,
+    pkg_id: String,
+) {
+    eprintln!("Open package detail: {}", pkg_id);
+    tokio_handle.spawn(async move {
+        match backend.get_package(&pkg_id).await {
+            Some(pkg) => {
+                let screenshots = pkg.metadata.screenshots.clone();
+                let icon_url = pkg.metadata.icon_url.clone();
+                let pkg_clone = pkg.clone();
+
+                let _ = slint::invoke_from_event_loop({
+                    let ui_weak = ui_weak.clone();
+                    let pkg_id = pkg_id.clone();
+                    move || {
+                        if let Some(ui) = ui_weak.upgrade() {
+                            eprintln!("Setting selected package and showing detail view...");
+                            ui.set_selected_package(package_to_slint_info(pkg_clone));
+                            ui.set_current_screenshot_index(0);
+                            ui.set_detail_carousel_offset(0);
+                            ui.set_selected_package_screenshots(slint::ModelRc::new(
+                                slint::VecModel::from(vec![]),
+                            ));
+                            ui.set_has_package_icon(false);
+                            ui.set_show_package_detail(true);
+                            ui.set_show_settings(false);
+                            ui.set_show_dep_detail(false);
+                            ui.set_is_transitioning(false); // Ensure we're not blocked
+                            // In case THIS package already has a running op
+                            sync_detail_op_from_tracker(&ui, &pkg_id);
+                        }
+                    }
+                });
+
+                load_detail_media(ui_weak.clone(), icon_url, screenshots).await;
+            }
+            None => {
+                eprintln!("Error: Package {} not found in backend!", pkg_id);
+            }
+        }
+    });
+}
+
+/// UI-thread handler for the detail page's ←/→ arrows: walk the shared
+/// category grid model (the list the user came from) and open the
+/// neighbouring app. No-ops when the app was opened outside of a category.
+fn nav_to_sibling_package(
+    backend: std::sync::Arc<BackendService>,
+    tokio_handle: tokio::runtime::Handle,
+    ui_weak: slint::Weak<MainWindow>,
+    delta: i32,
+) {
+    let Some(ui) = ui_weak.upgrade() else { return };
+    let current = ui.get_selected_package().id.to_string();
+    if current.is_empty() {
+        return;
+    }
+    let neighbours = CATEGORY_MODEL.with(|cell| {
+        let packages: Vec<String> = cell
+            .borrow()
+            .as_ref()
+            .map(|m| (0..m.row_count() as i32).filter_map(|i| m.row_data(i as usize).map(|p| p.id.to_string())).collect())
+            .unwrap_or_default();
+        packages
+    });
+    let Some(idx) = neighbours.iter().position(|id| *id == current) else {
+        eprintln!("Package nav: current app is not part of the loaded category grid; ignoring");
+        return;
+    };
+    let target = idx as i64 + delta as i64;
+    if target < 0 || target as usize >= neighbours.len() {
+        eprintln!("Package nav: reached the end of the category (pos {} of {})", idx, neighbours.len());
+        return;
+    }
+    drop(ui);
+    spawn_open_package(backend, tokio_handle, ui_weak, neighbours[target as usize].clone());
+}
+
 fn package_to_slint_info(pkg: model::Package) -> PackageInfo {
     let has_update = pkg.version.has_update();
     let cleaned_summary = strip_html_tags(&pkg.metadata.summary);
@@ -368,13 +473,29 @@ fn package_to_slint_info(pkg: model::Package) -> PackageInfo {
         })
         .collect();
 
+    // Screenshot variants (same media at several resolutions) and unknown
+    // versions are normalised here so every detail page shows clear data.
+    let screenshots = crate::model::dedupe_screenshot_variants(&pkg.metadata.screenshots);
+    let latest_version = pkg
+        .version
+        .latest
+        .clone()
+        .filter(|v| !v.trim().is_empty())
+        .or_else(|| {
+            pkg.version
+                .installed
+                .clone()
+                .filter(|v| !v.trim().is_empty())
+        })
+        .unwrap_or_else(|| "Unknown".to_string());
+
     PackageInfo {
         id: pkg.identity.id.clone().into(),
         name: pkg.identity.name.into(),
         summary: cleaned_summary.into(),
         source: pkg.identity.source.label().into(),
         installed_version: pkg.version.installed.unwrap_or_default().into(),
-        latest_version: pkg.version.latest.unwrap_or_default().into(),
+        latest_version: latest_version.into(),
         has_update,
         is_installed: pkg.is_installed,
         icon_url: pkg.metadata.icon_url.clone().unwrap_or_default().into(),
@@ -392,8 +513,7 @@ fn package_to_slint_info(pkg: model::Package) -> PackageInfo {
                 .collect::<Vec<slint::SharedString>>()
         })),
         screenshots: slint::ModelRc::new(slint::VecModel::from(
-            pkg.metadata
-                .screenshots
+            screenshots
                 .into_iter()
                 .map(Into::into)
                 .collect::<Vec<slint::SharedString>>(),
@@ -1011,6 +1131,18 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     eprintln!("Slint UI created and visible!");
 
+    // Debug affordance: OFFERINGS_WIN_POS="x,y" repositions the window right
+    // after the event loop starts. Handy for automated GUI tests that must not
+    // clobber the user's desktop layout. No effect when unset.
+    if let Some(pos) = std::env::var("OFFERINGS_WIN_POS").ok() {
+        if let Some((x, y)) = pos.split_once(',').and_then(|(a, b)| {
+            Some((a.trim().parse::<i32>().ok()?, b.trim().parse::<i32>().ok()?))
+        }) {
+            let _ = ui.window().set_position(slint::PhysicalPosition::new(x, y));
+            eprintln!("Window repositioned to {x},{y} (OFFERINGS_WIN_POS)");
+        }
+    }
+
     // Load the user's saved ("favorited") package ids BEFORE any PackageInfo
     // is built, so the heart state is correct on the very first paint.
     load_favorites_from_db(&backend);
@@ -1586,53 +1718,30 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     // Package click handler
     ui.on_package_clicked({
-        let ui_weak = ui.as_weak();
         let backend = backend_clone.clone();
         let tokio_handle = tokio_handle.clone();
+        let ui_weak = ui.as_weak();
         move |pkg_id| {
-            let backend = backend.clone();
-            let ui_weak = ui_weak.clone();
-            let pkg_id = pkg_id.to_string();
-            eprintln!("Package clicked: {}", pkg_id);
-
-            tokio_handle.spawn(async move {
-                match backend.get_package(&pkg_id).await {
-                    Some(pkg) => {
-                        let screenshots = pkg.metadata.screenshots.clone();
-                        let icon_url = pkg.metadata.icon_url.clone();
-                        let pkg_clone = pkg.clone();
-
-                        let _ = slint::invoke_from_event_loop({
-                            let ui_weak = ui_weak.clone();
-                            move || {
-                                if let Some(ui) = ui_weak.upgrade() {
-                                    eprintln!(
-                                        "Setting selected package and showing detail view..."
-                                    );
-                                    ui.set_selected_package(package_to_slint_info(pkg_clone));
-                                    ui.set_current_screenshot_index(0);
-                                    ui.set_detail_carousel_offset(0);
-                                    ui.set_selected_package_screenshots(slint::ModelRc::new(
-                                        slint::VecModel::from(vec![]),
-                                    ));
-                                    ui.set_has_package_icon(false);
-                                    ui.set_show_package_detail(true);
-                                    ui.set_show_settings(false);
-                                    ui.set_show_dep_detail(false);
-                                    ui.set_is_transitioning(false); // Ensure we're not blocked
-                                    // In case THIS package already has a running op
-                                    sync_detail_op_from_tracker(&ui, &pkg_id);
-                                }
-                            }
-                        });
-
-                        load_detail_media(ui_weak.clone(), icon_url, screenshots).await;
-                    }
-                    None => {
-                        eprintln!("Error: Package {} not found in backend!", pkg_id);
-                    }
-                }
-            });
+            spawn_open_package(
+                backend.clone(),
+                tokio_handle.clone(),
+                ui_weak.clone(),
+                pkg_id.to_string(),
+            );
+        }
+    });
+    // ←/→ navigation on the detail page (previous/next app of the category)
+    ui.on_nav_package({
+        let backend = backend_clone.clone();
+        let tokio_handle = tokio_handle.clone();
+        let ui_weak = ui.as_weak();
+        move |delta| {
+            nav_to_sibling_package(
+                backend.clone(),
+                tokio_handle.clone(),
+                ui_weak.clone(),
+                delta,
+            );
         }
     });
     // Source selection handler (switches view on detail page)
@@ -3104,9 +3213,20 @@ fn convert_to_slint_packages(packages: Vec<model::Package>) -> slint::ModelRc<Pa
 }
 
 /// Convert internal SourceItem struct to Slint SourceItem (Bulk)
+///
+/// The Settings page should only list REAL configurable sources. "Direct
+/// Release", "Lilith" (curated) and "Custom" are app features, not sources the
+/// user configures, so they are hidden here — custom entries still appear
+/// once the user actually adds one.
 fn convert_to_slint_sources(sources: Vec<model::SourceItem>) -> slint::ModelRc<SourceItem> {
+    let hidden = [
+        crate::model::PackageSource::OfferingsCustom.label(),
+        crate::model::PackageSource::OfferingsLilith.label(),
+        crate::model::PackageSource::GitHubRelease.label(),
+    ];
     let slint_sources: Vec<SourceItem> = sources
         .into_iter()
+        .filter(|s| !hidden.contains(&s.name.as_str()))
         .map(|s| SourceItem {
             name: s.name.into(),
             url: s.url.into(),
@@ -3371,6 +3491,35 @@ fn update_catalogue_icons(packages: &[model::Package]) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn get_package_keeps_name_and_summary_separate() {
+        // Regression guard for the detail page showing the summary as the
+        // hero title: the store cache row for Planify must render exactly
+        // "Planify" / "Forget about forgetting things".
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        rt.block_on(async move {
+            let backend = BackendService::new(HomePageContent::default()).unwrap();
+            if let Some(pkg) = backend
+                .get_package("flatpak:io.github.alainm23.planify")
+                .await
+            {
+                assert_eq!(pkg.identity.name, "Planify");
+                assert_eq!(pkg.metadata.summary, "Forget about forgetting things");
+                let info = package_to_slint_info(pkg);
+                assert_eq!(
+                    info.name.as_str(),
+                    "Planify",
+                    "detail page must render the app name, not its summary"
+                );
+            } else {
+                panic!("planify missing from the store cache");
+            }
+        });
+    }
 
     #[test]
     fn parse_cli_defaults_to_ui() {

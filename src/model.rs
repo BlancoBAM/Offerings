@@ -430,6 +430,116 @@ pub enum ViewState {
     Settings,
 }
 
+/// Collapse screenshot-size variants of the SAME AppStream media down to one
+/// entry (the highest-resolution variant per media stem).
+///
+/// AppStream `<screenshot>` blocks list the same capture at several widths
+/// (`…_624x351.png`, `…_752x423.png`, `…source.png`). Older catalogue builds
+/// ingested every width, so detail pages showed "three screenshots" that were
+/// three resolutions of one image. Grouping key: the URL with a trailing
+/// `NNNxNNN` size token (or an extension) stripped; the biggest decoded pair
+/// per group wins; ties keep the first-seen URL.
+pub fn dedupe_screenshot_variants(screenshots: &[String]) -> Vec<String> {
+    use std::collections::HashMap;
+
+    if screenshots.len() < 2 {
+        return screenshots.to_vec();
+    }
+
+    let stem_of = |url: &str| -> String {
+        let base = url.split(['?', '#']).next().unwrap_or(url);
+        let file_start = base.rfind('/').map(|i| i + 1).unwrap_or(0);
+        let (dir, file) = base.split_at(file_start);
+        // Split "name-1128x635" / "name_624x351" style suffixes.
+        let mut stem_end = file.len();
+        for (i, _b) in file.char_indices() {
+            let rest = &file[i..];
+            let after_x = rest
+                .char_indices()
+                .filter(|(_, c)| !c.is_ascii_digit())
+                .map(|(j, c)| (j, c))
+                .next();
+            let is_size = match after_x {
+                Some((j, 'x')) if j > 0 => {
+                    rest[j + 1..]
+                        .chars()
+                        .position(|c| !c.is_ascii_digit())
+                        .map(|end| end > 0)
+                        .unwrap_or(false)
+                }
+                _ => false,
+            };
+            if is_size {
+                stem_end = i;
+                break;
+            }
+        }
+        format!("{}{}", dir, &file[..stem_end])
+    };
+
+    let size_of = |url: &str| -> (i32, i32) {
+        let file = url.split(['?', '#']).next().unwrap_or(url);
+        let file = file.rsplit('/').next().unwrap_or(file);
+        let bytes: Vec<char> = file.chars().collect();
+        let n = bytes.len();
+        let mut i = 0;
+        while i < n {
+            // find digit run
+            if bytes[i].is_ascii_digit() {
+                let w_start = i;
+                while i < n && bytes[i].is_ascii_digit() { i += 1; }
+                // optional separator
+                let mut j = i;
+                if j < n && (bytes[j] == 'x' || bytes[j] == 'X' || bytes[j] == '·') {
+                    j += 1;
+                    let h_start = j;
+                    while j < n && bytes[j].is_ascii_digit() { j += 1; }
+                    // "624x351" needs digits on both sides
+                    if j > h_start {
+                        let w: String = bytes[w_start..i].iter().collect();
+                        let h: String = bytes[h_start..j].iter().collect();
+                        if let (Ok(w), Ok(h)) = (w.parse::<i32>(), h.parse::<i32>()) {
+                            if w > 0 && h > 0 {
+                                return (w, h);
+                            }
+                        }
+                    }
+                }
+            } else {
+                i += 1;
+            }
+        }
+        (0, 0)
+    };
+
+    // key -> best (area, index, url); preserves first-seen group order.
+    let mut groups: Vec<(String, i64, usize, String)> = Vec::new();
+    let mut index_of: HashMap<String, usize> = HashMap::new();
+    for (i, url) in screenshots.iter().enumerate() {
+        let key = stem_of(url);
+        let (w, h) = size_of(url);
+        let area = w as i64 * h as i64;
+        match index_of.get(&key) {
+            None => {
+                index_of.insert(key.clone(), groups.len());
+                groups.push((key, area, i, url.clone()));
+            }
+            Some(&gi) => {
+                let g = &mut groups[gi];
+                if area > g.1 {
+                    *g = (g.0.clone(), area, i, url.clone());
+                }
+            }
+        }
+    }
+
+    if groups.len() == screenshots.len() {
+        screenshots.to_vec()
+    } else {
+        groups.into_iter().map(|(.., url)| url).collect()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -452,5 +562,28 @@ mod tests {
             latest: Some("1.0.0".to_string()),
         };
         assert!(!version.has_update());
+    }
+
+    #[test]
+    fn test_dedupe_screenshot_variants_keeps_largest() {
+        let shots = vec![
+            "https://dl.flathub.org/media/ab/ab123/screenshots-image-1_624x351.png".to_string(),
+            "https://dl.flathub.org/media/ab/ab123/screenshots-image-1_1128x635.png".to_string(),
+            "https://dl.flathub.org/media/ab/ab123/screenshots-image-1_752x423.png".to_string(),
+            "https://dl.flathub.org/media/ab/ab123/screenshots-image-2_624x351.png".to_string(),
+        ];
+        let out = dedupe_screenshot_variants(&shots);
+        assert_eq!(out.len(), 2);
+        assert!(out[0].contains("1128x635"), "keeps the biggest variant, got {}", out[0]);
+        assert!(out[1].contains("624x351"));
+    }
+
+    #[test]
+    fn test_dedupe_screenshot_variants_leaves_unique_urls() {
+        let shots = vec![
+            "https://example.com/shot-a.png".to_string(),
+            "https://example.com/shot-b.png".to_string(),
+        ];
+        assert_eq!(dedupe_screenshot_variants(&shots), shots);
     }
 }

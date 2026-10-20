@@ -593,6 +593,11 @@ impl BackendService {
 
         println!("Cache refreshed: {} packages loaded", cache.len());
 
+        // Snapshot the canonical ids BEFORE the swap: `mem::take` empties
+        // `cache` when the live map takes over, and pruning with an empty
+        // keep-list would delete the entire cache table.
+        let canonical_ids: Vec<String> = cache.keys().cloned().collect();
+
         // ─── Atomic swap: the live cache jumps from the previous complete
         // snapshot straight to this new one. Never an empty in-between.
         {
@@ -601,9 +606,9 @@ impl BackendService {
         }
 
         // ─── Stage 4: prune stale per-source duplicates from the DB ───
-        {
+        if !canonical_ids.is_empty() {
             let favorites = self.db.get_favorites().unwrap_or_default();
-            let mut keep: Vec<String> = cache.keys().cloned().collect();
+            let mut keep = canonical_ids;
             keep.extend(favorites);
             match self.db.prune_packages_except(&keep) {
                 Ok(pruned) if pruned > 0 => {
@@ -1603,6 +1608,44 @@ impl BackendService {
                 alternatives.push(alt_pkg.identity.clone());
                 if alt_pkg.is_installed && installed_variant.is_none() {
                     installed_variant = Some(alt_pkg.clone());
+                }
+            }
+        }
+
+        // The refresh dedupe keeps only ONE row per logical app, so the
+        // per-source siblings (flatpak + snap + appimage of the same app) are
+        // normally absent from the cache and the dropdown came up empty. The
+        // unified catalogue still lists every co-referenced source id under
+        // `source_ids`; rebuild the missing alternatives from there. The
+        // dropdown only displays source labels, so the entry's canonical name
+        // is a valid stand-in identity name.
+        if alternatives.is_empty() {
+            if let Some(entry) = self
+                .metadata_catalog
+                .read()
+                .ok()
+                .and_then(|catalog| catalog.find_for_package(&pkg).cloned())
+            {
+                let own_id = pkg.identity.id.clone();
+                let mut seen = std::collections::HashSet::new();
+                seen.insert(own_id.clone());
+                seen.extend(alternatives.iter().map(|a| a.id.clone()));
+                for sibling in entry.source_ids {
+                    if !seen.insert(sibling.clone()) {
+                        continue;
+                    }
+                    let source = PackageSource::from_id(&sibling);
+                    // Un-prefixed raw ids would resolve to "Custom"; hide
+                    // them — the dropdown lists packaged formats only.
+                    if source == PackageSource::OfferingsCustom {
+                        continue;
+                    }
+                    let display = entry.name.clone().unwrap_or_else(|| sibling.clone());
+                    alternatives.push(crate::model::PackageIdentity {
+                        id: sibling,
+                        name: display,
+                        source,
+                    });
                 }
             }
         }

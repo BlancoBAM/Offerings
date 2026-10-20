@@ -530,7 +530,8 @@ impl Database {
         let source = Self::parse_source(&source_str);
 
         let categories: Vec<String> = serde_json::from_str(&categories_json).unwrap_or_default();
-        let screenshots: Vec<String> = serde_json::from_str(&screenshots_json).unwrap_or_default();
+        let screenshots: Vec<String> =
+            serde_json::from_str(&screenshots_json).unwrap_or_default();
 
         Ok(Package {
             identity: PackageIdentity {
@@ -545,7 +546,9 @@ impl Database {
                 homepage_url: row.get(6)?,
                 documentation_url: row.get(7)?,
                 categories,
-                screenshots,
+                // Catalogue snapshots may contain several widths of the same
+                // AppStream screenshot media; keep one (largest) per stem.
+                screenshots: crate::model::dedupe_screenshot_variants(&screenshots),
                 rating: row.get(10)?,
             },
             version: PackageVersion {

@@ -202,6 +202,68 @@ def slug(name: str) -> str:
     return re.sub(r"\s+", "-", name.strip().lower())
 
 
+def _lang_attr(el) -> str:
+    """xml:lang of an element (namespace-aware), "" when unlocalised."""
+    return el.attrib.get("{http://www.w3.org/XML/1998/namespace}lang", "") or ""
+
+
+def pick_default_locale_text(comp, q, tag: str) -> str:
+    """AppStream exposes <name>/<summary> in many languages. `findtext` grabs
+    the first element in document order, which may be ANY locale (Hebrew,
+    Arabic…) and English cards rendered foreign titles. Selection order:
+    un-localised default → en → first."""
+    nodes = comp.findall(q(tag))
+    if not nodes:
+        return ""
+    for node in nodes:
+        if not _lang_attr(node):
+            return (node.text or "").strip()
+    for node in nodes:
+        if _lang_attr(node).lower().startswith("en"):
+            return (node.text or "").strip()
+    return (nodes[0].text or "").strip()
+
+
+RTL_RE = re.compile(r"[\u0590-\u05FF\u0600-\u06FF]")
+LATIN_RE = re.compile(r"^[A-Za-z0-9][\x20-\u024F·.+\-']*")
+
+
+def fix_foreign_locale_names(entries: dict[str, dict]) -> list[str]:
+    """Some upstream feeds (soar/PkgForge forks) publish titles in Arabic or
+    Hebrew while every screenshot/homepage stays English. Replace such names
+    with a Latin name from a sibling catalogue entry referenced in this
+    entry's own `source_ids` (e.g. `flatpak:org.kde.ark.desktop` → "Ark").
+    Returns the ids that were patched."""
+    patched: list[str] = []
+
+    def is_latin(text: str) -> bool:
+        return bool(text) and not RTL_RE.search(text)
+
+    by_id = dict(entries)
+    for eid, entry in entries.items():
+        name = entry.get("name") or ""
+        summary = entry.get("summary") or ""
+        if is_latin(name) and is_latin(summary):
+            continue
+        for sibling in entry.get("source_ids") or []:
+            other = by_id.get(sibling)
+            if not other or other is entry:
+                continue
+            other_name = other.get("name") or ""
+            if not is_latin(other_name):
+                continue
+            if not is_latin(name):
+                entry["name"] = other_name
+                patched.append(eid)
+            if not is_latin(summary) and is_latin(other.get("summary") or ""):
+                entry["summary"] = other["summary"]
+            break
+    # Also patch the whole appimage:xxx sibling ids which never appear as
+    # entries themselves: a name like "appimage:آرك" carries the Arabic in the
+    # id, so latin entries win as the canonical display row.
+    return patched
+
+
 def parse_flathub_appstream(path: Path, base_remote: str | None = None) -> dict[str, dict]:
     """Flathub AppStream catalog (appstream.xml[.gz]) — every GUI application
     with real freedesktop categories, icons, screenshots and release info.
@@ -241,11 +303,11 @@ def parse_flathub_appstream(path: Path, base_remote: str | None = None) -> dict[
             continue
 
         appid = (comp.findtext(q("id")) or "").strip()
-        name = (comp.findtext(q("name")) or "").strip()
+        name = pick_default_locale_text(comp, q, "name")
         if not name or not appid:
             continue
 
-        summary = (comp.findtext(q("summary")) or "").strip()
+        summary = pick_default_locale_text(comp, q, "summary")
         # <description> contains <p> paragraphs — join their text.
         desc_parts = []
         desc_el = comp.find(q("description"))
@@ -269,10 +331,17 @@ def parse_flathub_appstream(path: Path, base_remote: str | None = None) -> dict[
 
         screenshots = []
         for shot in comp.iter(q("screenshot")):
-            for img in shot.iter(q("image")):
-                u = (img.text or "").strip()
-                if u.startswith("http"):
-                    screenshots.append(u)
+            # One image per <screenshot>: <image> children of the same shot are
+            # size variants of the SAME media (624x/752x/1128x) — taking them
+            # all produced "three screenshots" that were three resolutions of
+            # one image. Prefer the plain "source" variant, else the first.
+            images = [(img.get("type") or "", (img.text or "").strip())
+                      for img in shot.iter(q("image"))]
+            urls = [u for _, u in images if u.startswith("http")]
+            if not urls:
+                continue
+            plain = next((u for t, u in images if t == "source" and u.startswith("http")), None)
+            screenshots.append(plain or urls[0])
             if len(screenshots) >= 3:
                 break
 
@@ -752,6 +821,13 @@ def main() -> int:
         kept.append(entry)
     entries = kept
 
+
+    # Non-Latin titles from foreign-locale upstream feeds: swap for a Latin
+    # sibling name (source_ids co-references) so the store stays readable.
+    # entries is a list of dicts here; normalize to id→dict for the helper.
+    entries_by_id = {e["package_id"]: e for e in entries}
+    fix_foreign_locale_names(entries_by_id)
+    entries = list(entries_by_id.values())
 
     catalogue = {
         "version": 1,

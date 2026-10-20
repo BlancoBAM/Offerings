@@ -615,6 +615,46 @@ component AppCard inherits Rectangle {
         }
     }
 
+    // Hover tooltip: floats just above the hovered card with the full title
+    // and summary (cards elide long titles; the tooltip carries the rest).
+    // Deliberately NOT a PopupWindow — a popup grabs input and wedges every
+    // click until it closes. A plain overlay paints after all earlier cards
+    // (grid order), so it shows above the row above without stealing input.
+    hover-tip := Rectangle {
+        x: 0px;
+        y: -88px;
+        width: 280px;
+        height: 76px;
+        visible: touch.has-hover;
+        background: #260a06;
+        border-radius: 10px;
+        border-width: 1px;
+        border-color: AppColors.accent-primary;
+        drop-shadow-blur: 10px;
+        drop-shadow-color: rgba(0, 0, 0, 0.55);
+        VerticalLayout {
+            padding: 10px;
+            spacing: 4px;
+            Text {
+                text: package.name;
+                color: AppColors.text-primary;
+                font-size: 13px;
+                font-weight: 700;
+                wrap: word-wrap;
+                overflow: elide;
+                max-height: 34px;
+            }
+            Text {
+                text: package.summary != "" ? package.summary : "";
+                color: AppColors.text-secondary;
+                font-size: 11px;
+                wrap: word-wrap;
+                overflow: elide;
+                vertical-stretch: 1;
+            }
+        }
+    }
+
     HorizontalLayout {
         padding: 10px;
         spacing: 12px;
@@ -771,6 +811,10 @@ component HorizontalCategorySection inherits Rectangle {
             for pkg[idx] in packages: AppCard {
                 col: mod(idx, root.columns);
                 row: Math.floor(idx / root.columns);
+                // Fixed width derived from the grid: content-driven preferred
+                // widths used to make each column a different size (cards with
+                // long but elided text blew their column up).
+                width: Math.max(120px, (parent.width - (root.columns - 1) * 16px) / root.columns);
                 package: pkg;
                 clicked => {
                     root.package-clicked(pkg.id);
@@ -858,6 +902,9 @@ component CategorySection inherits Rectangle {
             for pkg[idx] in packages: AppCard {
                 col: mod(idx, root.columns);
                 row: Math.floor(idx / root.columns);
+                // Same equal-width rule as the home sections (content-driven
+                // preferred widths made columns visibly uneven).
+                width: Math.max(120px, (parent.width - 8px - (root.columns - 1) * 16px) / root.columns);
                 package: pkg;
                 clicked => {
                     root.package-clicked(pkg.id);
@@ -1043,6 +1090,9 @@ component AlternativeSourceDropdown inherits Rectangle {
 
 // Package detailed view page
 component PackageDetailView inherits Rectangle {
+    // Keyboard focus lands on the key handler when the page opens, so ←/→
+    // (like the fullscreen screenshot viewer) navigate neighbouring apps.
+    forward-focus: key-scope;
     in property <PackageInfo> package;
     in property <[image]> screenshots;
     in property <image> package-icon;
@@ -1053,25 +1103,22 @@ component PackageDetailView inherits Rectangle {
     in property <float> op-progress;
     in-out property <int> carousel-offset: 0;
     property <int> screenshot-count: root.screenshots.length;
-    property <int> carousel-visible-count: 3; // Fixed number of visible items
-    property <length> carousel-tile-width: 280px; // Fixed width
-    property <int> carousel-max-offset: 100; // Fixed max offset to avoid calculations
-    property <int> carousel-start-range: 1; // Simplified
-    property <int> carousel-end-range: 3; // Simplified
-    property <int> carousel-step: 1;
-    property <bool> carousel-show-left: root.carousel-offset > 0;
-    property <bool> carousel-show-right: root.carousel-offset < 10; // Simplified
+    property <length> shot-tile-height: 180px; // One row, natural height
+    property <length> shot-gap: 12px;
     property <bool> carousel-visible: root.screenshot-count > 0;
     in-out property <int> screenshot-index: 0;
     property <bool> confirm-uninstall: false;
     callback open-clicked(string);
     callback screenshot-clicked(int);
+    // Keyboard / on-screen navigation to the previous / next app of the
+    // category the app was opened from (delta -1 or +1).
+    callback nav-package(int);
+    callback open-homepage(string);
     callback back-clicked();
     callback install-clicked(string);
     callback uninstall-clicked(string);
     callback update-clicked(string);
     callback source-selected(string);
-    callback open-homepage(string);
     callback toggle-favorite();
 
     background: AppColors.bg-primary;
@@ -1079,6 +1126,22 @@ component PackageDetailView inherits Rectangle {
 
     // Block click-through to main content
     TouchArea { width: 100%; height: 100%; }
+
+    // Keyboard navigation: ←/→ moves to the previous/next app of the
+    // category this app was opened from.
+    key-scope := FocusScope {
+        key-pressed(event) => {
+            if event.text == Key.LeftArrow {
+                root.nav-package(-1);
+                accept
+            } else if event.text == Key.RightArrow {
+                root.nav-package(1);
+                accept
+            } else {
+                reject
+            }
+        }
+    }
 
     VerticalLayout {
         padding: 32px;
@@ -1091,6 +1154,16 @@ component PackageDetailView inherits Rectangle {
                 icon-text: "← Back";
                 width: 80px;
                 clicked => { back-clicked(); }
+            }
+            IconButton {
+                icon-text: "❮";
+                width: 44px;
+                clicked => { root.nav-package(-1); }
+            }
+            IconButton {
+                icon-text: "❯";
+                width: 44px;
+                clicked => { root.nav-package(1); }
             }
             Rectangle { horizontal-stretch: 1; }
 
@@ -1238,6 +1311,14 @@ component PackageDetailView inherits Rectangle {
                                     min-width: 100px;
                                     clicked => { root.confirm-uninstall = true; }
                                 }
+                                // Clearly-labelled Save for Later (the heart
+                                // glyph alone was easy to miss in testing).
+                                if !root.op-running: ActionButton {
+                                    text: package.favorite ? "♥ Saved for Later" : "♡ Save for Later";
+                                    min-width: 130px;
+                                    primary: package.favorite;
+                                    clicked => { toggle-favorite(); }
+                                }
                                 if root.confirm-uninstall && !root.op-running: HorizontalLayout {
                                     spacing: 8px;
                                     ActionButton {
@@ -1267,19 +1348,20 @@ component PackageDetailView inherits Rectangle {
                                     source-selected(alt) => { root.source-selected(alt.id); }
                                 }
                                 if (package.alternatives.length == 0 && package.source != ""): Rectangle {
-                                    min-width: 180px;
+                                    width: 170px;
                                     height: 32px;
                                     background: AppColors.bg-tertiary;
                                     border-radius: 4px;
                                     HorizontalLayout {
-                                        padding-left: 12px;
-                                        padding-right: 12px;
-                                        Text {
-                                            horizontal-stretch: 1;
+                                        padding-left: 13px;
+                                        padding-right: 13px;
+                                        source-label := Text {
                                             text: "Source: " + package.source;
                                             color: AppColors.text-secondary;
                                             font-size: 12px;
                                             vertical-alignment: center;
+                                            wrap: no-wrap;
+                                            overflow: elide;
                                         }
                                     }
                                 }
@@ -1313,112 +1395,44 @@ component PackageDetailView inherits Rectangle {
                         font-size: 20px;
                         font-weight: 700;
                     }
+                    // One compact row sized to the real number of screenshots;
+                    // side-scroll when they overflow (no giant filler box).
                     Rectangle {
                         horizontal-stretch: 1;
-                        min-height: root.carousel-tile-width * 0.6 + 48px;
+                        height: root.shot-tile-height + 2 * 14px + 2px;
                         background: AppColors.bg-secondary;
                         border-radius: 16px;
                         border-width: 1px;
                         border-color: AppColors.border-primary;
                         clip: true;
-                        HorizontalLayout {
-                            padding: 16px;
-                            spacing: 12px;
-                            VerticalLayout {
-                                spacing: 8px;
-                                HorizontalLayout {
-                                    spacing: 12px;
-                                    if root.carousel-show-left : Rectangle {
-                                        width: 44px;
-                                        height: 44px;
-                                        background: AppColors.bg-tertiary;
-                                        border-radius: 22px;
-                                        border-width: 1px;
-                                        border-color: AppColors.border-primary;
-                                        Text {
-                                            text: "❮";
-                                            color: AppColors.text-primary;
-                                            font-size: 22px;
-                                            horizontal-alignment: center;
-                                            vertical-alignment: center;
-                                        }
-                                        TouchArea {
-                                            mouse-cursor: pointer;
-                                            clicked => {
-                                                if root.carousel-offset > 0 {
-                                                    root.carousel-offset -= root.carousel-step;
-                                                }
-                                            }
-                                        }
+                        shots-flick := Flickable {
+                            x: 14px;
+                            y: 14px;
+                            width: parent.width - 28px;
+                            height: root.shot-tile-height;
+                            viewport-width: shots-row.preferred-width;
+                            viewport-height: root.shot-tile-height;
+                            shots-row := HorizontalLayout {
+                                spacing: root.shot-gap;
+                                for img[idx] in root.screenshots: Rectangle {
+                                    width: root.shot-tile-height * 1.6;
+                                    height: root.shot-tile-height;
+                                    background: AppColors.bg-primary;
+                                    border-radius: 10px;
+                                    border-width: 1px;
+                                    border-color: AppColors.border-primary;
+                                    clip: true;
+                                    Image {
+                                        width: 100%;
+                                        height: 100%;
+                                        source: img;
+                                        image-fit: contain;
                                     }
-                                        HorizontalLayout {
-                                            spacing: 12px;
-                                            horizontal-stretch: 1;
-                                            for img[idx] in root.screenshots: Rectangle {
-                                                property <bool> slide-visible: idx < 3; // Show first 3 items only
-                                                width: root.carousel-tile-width;
-                                                height: root.carousel-tile-width * 0.6;
-                                                background: slide-visible ? AppColors.bg-primary : transparent;
-                                                border-radius: 12px;
-                                                border-width: slide-visible ? 1px : 0px;
-                                                border-color: AppColors.border-primary;
-                                                clip: true;
-                                                opacity: slide-visible ? 1.0 : 0.0;
-                                                // Don't use visible property to avoid layout shifts
-                                                Image {
-                                                    width: 100%;
-                                                    height: 100%;
-                                                    source: img;
-                                                    image-fit: contain;
-                                                    opacity: slide-visible ? 1.0 : 0.0;
-                                                }
-                                                TouchArea {
-                                                    enabled: slide-visible;
-                                                    mouse-cursor: slide-visible ? pointer : default;
-                                                    clicked => {
-                                                        if (slide-visible) {
-                                                            root.screenshot-clicked(idx);
-                                                        }
-                                                    }
-                                                }
-                                            }
+                                    TouchArea {
+                                        mouse-cursor: pointer;
+                                        clicked => {
+                                            root.screenshot-clicked(idx);
                                         }
-                                    if root.carousel-show-right : Rectangle {
-                                        width: 44px;
-                                        height: 44px;
-                                        background: AppColors.bg-tertiary;
-                                        border-radius: 22px;
-                                        border-width: 1px;
-                                        border-color: AppColors.border-primary;
-                                        Text {
-                                            text: "❯";
-                                            color: AppColors.text-primary;
-                                            font-size: 22px;
-                                            horizontal-alignment: center;
-                                            vertical-alignment: center;
-                                        }
-                                        TouchArea {
-                                            mouse-cursor: pointer;
-                                            clicked => {
-                                                if root.carousel-offset < root.carousel-max-offset {
-                                                    root.carousel-offset += root.carousel-step;
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                                HorizontalLayout {
-                                    spacing: 8px;
-                                    Text {
-                                        text: root.carousel-start-range + "-" + root.carousel-end-range + " of " + root.screenshot-count;
-                                        color: AppColors.text-muted;
-                                        font-size: 12px;
-                                    }
-                                    Rectangle { horizontal-stretch: 1; }
-                                    Text {
-                                        text: "Click to expand";
-                                        color: AppColors.text-muted;
-                                        font-size: 12px;
                                     }
                                 }
                             }
@@ -1451,15 +1465,20 @@ component PackageDetailView inherits Rectangle {
                         font-size: 20px;
                         font-weight: 700;
                     }
+                    // Compact pill: hugs the URL instead of stretching a big
+                    // mostly-empty box across the page. Fixed width (a pill
+                    // sized from an elided Text's preferred width recurses).
                     Rectangle {
-                        horizontal-stretch: 1;
+                        width: 420px;
+                        height: 40px;
                         background: AppColors.bg-secondary;
                         border-radius: 12px;
                         border-width: 1px;
                         border-color: AppColors.border-primary;
                         clip: true;
                         HorizontalLayout {
-                            padding: 16px;
+                            padding-left: 16px;
+                            padding-right: 16px;
                             spacing: 12px;
                             Text {
                                 text: "🌐";
@@ -1473,8 +1492,8 @@ component PackageDetailView inherits Rectangle {
                                 font-size: 14px;
                                 font-weight: 600;
                                 vertical-alignment: center;
-                                horizontal-stretch: 1;
-                                wrap: word-wrap;
+                                wrap: no-wrap;
+                                overflow: elide;
                             }
                         }
                         TouchArea {
@@ -1918,6 +1937,9 @@ export component MainWindow inherits Window {
     callback open-homepage(string);
     callback source-selected(string);
     callback load-more(string);
+    // Detail-page navigation: move to the previous/next app of the category
+    // the current app was opened from (delta -1 or +1).
+    callback nav-package(int);
     // Favorites: return value = new saved state (heart burns on when true)
     callback toggle-favorite(string, string) -> bool;
     // Direct Release: install straight from "owner/repo" or a github.com URL
@@ -2649,8 +2671,6 @@ export component MainWindow inherits Window {
         height: 100%;
         package: selected-package;
         screenshots: root.selected-package-screenshots;
-        carousel-offset <=> root.detail-carousel-offset;
-        screenshot-index <=> root.current-screenshot-index;
         package-icon: root.selected-package-icon;
         has-package-icon: root.has-package-icon;
         op-running: root.detail-op-running;
@@ -2662,6 +2682,9 @@ export component MainWindow inherits Window {
         }
         back-clicked => {
             show-package-detail = false;
+        }
+        nav-package(delta) => {
+            root.nav-package(delta);
         }
         install-clicked(id) => {
             root.install-clicked(id);
