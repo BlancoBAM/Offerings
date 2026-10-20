@@ -39,6 +39,7 @@
 - 🗂️ **Smart Categorization**: Automated classification of thousands of apps into intuitive categories following the freedesktop Main Categories spec.
 - ❤️ **Saved for Later**: Infernal heart toggle on any app saves it to your personal Saved shelf.
 - ⚡ **Direct Release**: enter any `owner/repo` or github.com URL and Offerings picks and installs the right release asset for your machine.
+- 📥 **Local Packages**: double-click any `.deb`, `.AppImage`, `.flatpak`, or `.snap` file (or run `offerings <file>`) to inspect its metadata in Offerings before installing. MIME associations are registered by `install.sh`.
 - 📊 **Honest Progress**: install/uninstall/refresh bars show real percentages — byte counts for downloads, actual task completion for snaps, and real database rows written during refreshes.
 - 🪟 **Tiling-Friendly Layout**: the app grid reflows dynamically as the window resizes (cosmic tiling ready).
 
@@ -51,38 +52,71 @@
 
 ## 🚀 Installation
 
-### Binary (Recommended)
+### AppImage (Recommended)
 
-Download the latest pre-built binary from the [Releases page](https://github.com/BlancoBAM/Offerings/releases/latest):
+Works on any Linux distribution, no install needed:
 
 ```bash
-wget https://github.com/BlancoBAM/Offerings/releases/latest/download/offerings-linux-amd64
-sudo install -m 0755 offerings-linux-amd64 /usr/local/bin/offerings
+# Grab the latest AppImage from the Releases page
+# (asset name follows Offerings-<version>-<arch>.AppImage, e.g. Offerings-1.4.0-x86_64.AppImage)
+wget https://github.com/BlancoBAM/Offerings/releases/latest/download/Offerings-1.4.0-x86_64.AppImage
+chmod +x Offerings-*.AppImage
+./Offerings-*.AppImage
+```
+
+### Debian/Ubuntu .deb
+
+Pre-built `.deb` packages are also published on the [Releases page](https://github.com/BlancoBAM/Offerings/releases/latest):
+
+```bash
+wget https://github.com/BlancoBAM/Offerings/releases/latest/download/offerings_1.4.0-1_amd64.deb
+sudo dpkg -i offerings_*.deb
+```
+
+### Install Script (recommended for Lilith Linux)
+
+Clones the repo, installs dependencies, builds in release mode, and registers desktop + MIME integration (double-click `.deb`/`.AppImage`/`.flatpak`/`.snap` to open in Offerings):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/BlancoBAM/Offerings/main/install.sh | bash
 ```
 
 ### From Source
 
 ```bash
-# Clone the repository
 git clone https://github.com/BlancoBAM/Offerings.git
 cd Offerings
-
-# Run the install script (handles deps, build, and desktop integration)
-bash install.sh
+cargo install --path .
 ```
 
-> **Note:** The `cargo install offerings` and AppImage methods are not currently supported.
-> Use the binary download or build from source via `install.sh`.
+> **Note:** `cargo install --git https://github.com/BlancoBAM/Offerings` works too. Releases are produced automatically by CI on version tags (`vX.Y.Z`), publishing the AppImage, `.deb`, and generated release notes.
 
 ## 🛠️ Configuration for Developers
 
 ### Lilith Curated Section
 
-The Lilith section is populated via `assets/metadata-catalog.json`. To curate apps for this section:
+The Lilith section is populated from a small TOML file of hand-picked URLs, not
+the generated metadata catalogue. Offerings looks for `lilith-curated.toml` (or
+`offer-cur.toml`) in this order:
 
-1. Add an entry to `assets/metadata-catalog.json`.
-2. Include `"Lilith"` in the `categories` array.
-3. The app will automatically populate the Lilith section upon the next refresh.
+1. Next to the binary (AppImage / local install)
+2. The current working directory (running from source)
+3. `~/.local/share/offerings/lilith-curated.toml`
+4. `/usr/share/offerings/lilith-curated.toml` (where the `.deb` ships it)
+
+To curate apps:
+
+1. Open `lilith-curated.toml` and add a URL on its own line under a section
+   header (`# ─── Category ───`), with an optional comment after it:
+   ```toml
+   # ─── Productivity & Note-taking ───
+   https://flathub.org/en/apps/io.github.alainm23.planify     # Planify — task management
+   ```
+2. The source is inferred from the URL pattern: `flathub.org` → Flatpak,
+   `snapcraft.io` → Snap, `github.com` → Direct Release, direct file links →
+   AppImage.
+3. Restart Offerings and the app appears in the Lilith section —
+   every curated entry is implicitly tagged `"Lilith"`.
 
 ### Package Sources
 
@@ -124,10 +158,6 @@ sudo apt remove <package-name>
 flatpak uninstall <app-id>
 ```
 
-### Installing `.deb` or `.AppImage` Files Directly
-
-Offerings does not support installing local `.deb` or `.AppImage` files via the GUI. For that, use **COSMIC Store** (pre-installed on Lilith Linux), which supports opening local packages.
-
 ### App Applets and DE Integration
 
 COSMIC panel applets are not currently listed in Offerings. Use COSMIC Store or install them manually — this is a planned future addition.
@@ -138,7 +168,8 @@ COSMIC panel applets are not currently listed in Offerings. Use COSMIC Store or 
 |------|-------------|
 | `src/` | Core application logic in Rust |
 | `ui/` | User interface definitions using Slint |
-| `assets/` | Icons, metadata catalogs, and desktop integration files |
+| `assets/` | Icons, the generated metadata catalogue, and desktop integration files |
+| `tools/` | Catalogue builder/updater scripts and systemd timer units |
 | `docs/` | Technical documentation and deployment guides |
 
 ## 📄 License
