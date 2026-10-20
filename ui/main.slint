@@ -298,6 +298,8 @@ component ActiveOperationsPanel inherits Rectangle {
 component IconButton inherits Rectangle {
     in property <string> icon-text;
     in property <color> icon-color: AppColors.text-primary;
+    in property <image> icon-image;
+    in property <bool> has-icon-image: false;
     callback clicked();
     width: 36px;
     height: 36px;
@@ -314,7 +316,12 @@ component IconButton inherits Rectangle {
         }
     }
 
-    Text {
+    if has-icon-image: Image {
+        source: icon-image;
+        width: 22px;
+        height: 22px;
+    }
+    if !has-icon-image: Text {
         text: icon-text;
         color: icon-color;
         font-size: 18px;
@@ -346,14 +353,15 @@ component HeartButton inherits Rectangle {
         }
     }
 
-    // Layered: flame glyph over the heart when favorited
-    Text {
-        text: favorited ? "♥" : "♡";
-        color: favorited ? #ff2a00 : AppColors.text-secondary;
-        animate color { duration: 200ms; }
-        font-size: 24px;
+    // The sigil-book: grey outline when unsaved, blood-red when burned in
+    Image {
+        source: favorited ? @image-url("../assets/icon-saved-on.png")
+                          : @image-url("../assets/icon-saved-off.png");
+        width: 26px;
+        height: 26px;
         horizontal-alignment: center;
         vertical-alignment: center;
+        opacity: favorited ? 1.0 : 0.9;
     }
     if favorited: Text {
         text: "🔥";
@@ -404,6 +412,8 @@ component ActionButton inherits Rectangle {
 component SidebarItem inherits Rectangle {
     in property <string> label;
     in property <string> icon;
+    in property <image> image-icon;
+    in property <bool> has-image-icon: false;
     in property <bool> selected: false;
     in property <int> count: 0;
     callback clicked();
@@ -425,11 +435,21 @@ component SidebarItem inherits Rectangle {
         padding-left: 12px;
         padding-right: 12px;
         spacing: 10px;
-        Text {
-            text: icon;
-            color: selected ? AppColors.text-primary : AppColors.text-secondary;
-            font-size: 16px;
-            vertical-alignment: center;
+        Rectangle {
+            width: 20px;
+            if has-image-icon: Image {
+                source: image-icon;
+                width: 18px;
+                height: 18px;
+            }
+            if !has-image-icon: Text {
+                text: icon;
+                color: selected ? AppColors.text-primary : AppColors.text-secondary;
+                font-size: 16px;
+                vertical-alignment: center;
+                horizontal-alignment: center;
+            }
+            vertical-stretch: 1;
         }
 
         Text {
@@ -1090,6 +1110,10 @@ component AlternativeSourceDropdown inherits Rectangle {
 
 // Package detailed view page
 component PackageDetailView inherits Rectangle {
+    // Do NOT let the content's intrinsic preferred width force this view
+    // (and thus the whole window) wider than the viewport — the right-aligned
+    // heart button used to be pushed off-screen on narrow windows.
+    min-width: 0px;
     // Keyboard focus lands on the key handler when the page opens, so ←/→
     // (like the fullscreen screenshot viewer) navigate neighbouring apps.
     forward-focus: key-scope;
@@ -1165,13 +1189,13 @@ component PackageDetailView inherits Rectangle {
                 width: 44px;
                 clicked => { root.nav-package(1); }
             }
-            Rectangle { horizontal-stretch: 1; }
-
-            // Save for later (infernal heart)
+            // Save for later (infernal heart) — sits next to the nav arrows
+            // so it stays visible on any window width.
             HeartButton {
                 favorited: package.favorite;
                 clicked => { toggle-favorite(); }
             }
+            Rectangle { horizontal-stretch: 1; }
         }
 
         Flickable {
@@ -1311,10 +1335,10 @@ component PackageDetailView inherits Rectangle {
                                     min-width: 100px;
                                     clicked => { root.confirm-uninstall = true; }
                                 }
-                                // Clearly-labelled Save for Later (the heart
-                                // glyph alone was easy to miss in testing).
+                                // Clearly-labelled Saved toggle (the sigil-book
+                                // button on the card mirrors it).
                                 if !root.op-running: ActionButton {
-                                    text: package.favorite ? "♥ Saved for Later" : "♡ Save for Later";
+                                    text: package.favorite ? "Saved" : "Save";
                                     min-width: 130px;
                                     primary: package.favorite;
                                     clicked => { toggle-favorite(); }
@@ -2099,8 +2123,10 @@ export component MainWindow inherits Window {
                             padding-right: 8px; // Space for scrollbar
 
                             SidebarItem {
-                                label: "Lilith";
-                                icon: "😈";
+                                label: "Lilith Recommends";
+                                icon: "⚸";
+                                image-icon: @image-url("../assets/icon-lilith.png");
+                                has-image-icon: true;
                                 selected: current-view == "lilith";
                                 clicked => {
                                     if !is-transitioning {
@@ -2145,10 +2171,12 @@ export component MainWindow inherits Window {
                                 }
                             }
 
-                            // Infernal heart — saved for later
+                            // Sigil-book — saved for later
                             SidebarItem {
                                 label: "Saved";
                                 icon: "♥";
+                                image-icon: @image-url("../assets/icon-saved-tab.png");
+                                has-image-icon: true;
                                 selected: current-view == "saved";
                                 count: saved-packages.length;
                                 clicked => {
@@ -2232,7 +2260,8 @@ export component MainWindow inherits Window {
                             // Refresh the catalogue from every source
                             // (real DB-progress shown under the top bar)
                             IconButton {
-                                icon-text: "🔄";
+                                icon-image: @image-url("../assets/icon-refresh.png");
+                                has-icon-image: true;
                                 clicked => { root.refresh-db-clicked(); }
                             }
 
@@ -2323,7 +2352,7 @@ export component MainWindow inherits Window {
                                 alignment: start;
                                 spacing: 16px;
 
-                                // ── Lilith Curated Hero Section ─────────────────────────────
+                                // ── Lilith Recommends Hero Section ─────────────────────────────
                                 if featured-lilith.length > 0: Rectangle {
                                     border-radius: 12px;
                                     background: @linear-gradient(135deg, #1a0033 0%, #2d0055 40%, #1a003388 100%);
@@ -2342,9 +2371,10 @@ export component MainWindow inherits Window {
 
                                             VerticalLayout {
                                                 alignment: center;
-                                                Text {
-                                                    text: "😈";
-                                                    font-size: 28px;
+                                                Image {
+                                                    source: @image-url("../assets/icon-lilith.png");
+                                                    width: 30px;
+                                                    height: 30px;
                                                 }
                                             }
 
@@ -2354,7 +2384,7 @@ export component MainWindow inherits Window {
                                                 horizontal-stretch: 1;
 
                                                 Text {
-                                                    text: "Lilith Curated";
+                                                    text: "Lilith Recommends";
                                                     color: #c084fc;
                                                     font-size: 18px;
                                                     font-weight: 800;
@@ -2512,14 +2542,17 @@ export component MainWindow inherits Window {
 
                             HorizontalLayout {
                                 spacing: 12px;
-                                Text {
-                                    text: "♥";
-                                    color: AppColors.accent-hover;
-                                    font-size: 24px;
-                                    vertical-alignment: center;
+                                Rectangle {
+                                    width: 26px;
+                                    Image {
+                                        source: @image-url("../assets/icon-saved-on.png");
+                                        width: 24px;
+                                        height: 24px;
+                                    }
+                                    vertical-stretch: 1;
                                 }
                                 Text {
-                                    text: "Saved for Later";
+                                    text: "Saved";
                                     color: AppColors.text-primary;
                                     font-size: 24px;
                                     font-weight: 800;
@@ -2529,7 +2562,7 @@ export component MainWindow inherits Window {
                             }
 
                             if saved-packages.length == 0: Text {
-                                text: "Nothing burning yet — tap the ♥ on any app's page and it will wait for you here.";
+                                text: "Nothing saved yet — tap Save on any app's page and the sigil will remember it for you here.";
                                 color: AppColors.text-secondary;
                                 font-size: 14px;
                             }

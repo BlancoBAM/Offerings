@@ -1850,7 +1850,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                             let (cat_name, cat_icon) = {
                                 // Handle special pinned categories not in the dynamic list
                                 if category == "lilith" {
-                                    ("Lilith".to_string(), "😈".to_string())
+                                    ("Lilith Recommends".to_string(), "⚸".to_string())
                                 } else {
                                     let mut res = (category.clone(), "📦".to_string());
                                     for c in ui.get_categories().iter() {

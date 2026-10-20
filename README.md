@@ -34,7 +34,7 @@
   your system — never for re-flooding the browse grid.
 - 📦 **Multi-Source Support**: Seamless integration with Flatpak, Snap, AppImage (AM), SOAR/pkgforge, Homebrew, and Direct Release (GitHub binaries).
 - 🎨 **Modern Interface**: Built with Slint for a fast, responsive, and native-feeling experience.
-- 🛡️ **Lilith Curated Section**: Hand-picked applications specifically chosen for Lilith Linux users.
+- 🛡️ **Lilith Recommends**: Hand-picked applications specifically chosen for Lilith Linux users.
 - 🔄 **Automated Updates**: Background synchronization ensures you always have the latest versions and package metadata.
 - 🔍 **Powerful Search**: Fuzzy matching across all enabled sources to find exactly what you need.
 - 🗂️ **Smart Categorization**: Automated classification of thousands of apps into intuitive categories following the freedesktop Main Categories spec.
@@ -95,7 +95,7 @@ cargo install --path .
 
 ## 🛠️ Configuration for Developers
 
-### Lilith Curated Section
+### Lilith Recommends
 
 The Lilith section is populated from a small TOML file of hand-picked URLs, not
 the generated metadata catalogue. Offerings looks for `lilith-curated.toml` (or
