@@ -321,6 +321,10 @@ where
     let mut full_output = String::new();
     let mut stdout_buf = Vec::new();
     let mut stderr_buf = Vec::new();
+    // Errors are reported from stderr; keep the last meaningful lines so the
+    // failure message says WHAT failed ("No installed refs found for 'X'")
+    // instead of a bare "exit status: 1".
+    let mut stderr_tail: Vec<String> = Vec::new();
     let mut stdout_read_buf = [0u8; 1024];
     let mut stderr_read_buf = [0u8; 1024];
     let mut stdout_done = false;
@@ -368,6 +372,7 @@ where
                             let line = String::from_utf8_lossy(&stderr_buf);
                             let cleaned = strip_ansi_escapes(&line);
                             callback(&cleaned, true);
+                            push_stderr_tail(&mut stderr_tail, &cleaned);
                             stderr_buf.clear();
                         }
                     }
@@ -378,6 +383,7 @@ where
                                     let line = String::from_utf8_lossy(&stderr_buf);
                                     let cleaned = strip_ansi_escapes(&line);
                                     callback(&cleaned, true);
+                                    push_stderr_tail(&mut stderr_tail, &cleaned);
                                     stderr_buf.clear();
                                 }
                             } else {
@@ -395,7 +401,25 @@ where
     if status.success() {
         Ok(full_output)
     } else {
-        Err(format!("Command failed with status: {}", status).into())
+        let detail = stderr_tail.join(" ").trim().to_string();
+        if detail.is_empty() {
+            Err(format!("Command failed with status: {}", status).into())
+        } else {
+            Err(format!("Command failed: {}", detail).into())
+        }
+    }
+}
+
+/// Ring-buffer of the last few stderr lines used for error reporting.
+fn push_stderr_tail(tail: &mut Vec<String>, line: &str) {
+    let trimmed = line.trim();
+    if trimmed.is_empty() {
+        return;
+    }
+    tail.push(trimmed.to_string());
+    if tail.len() > 5 {
+        let drop_n = tail.len() - 5;
+        tail.drain(..drop_n);
     }
 }
 

@@ -8,6 +8,7 @@ mod ipc;
 mod local_pkg;
 mod model;
 mod notifications;
+mod search;
 mod transaction;
 
 use backend::BackendService;
@@ -125,6 +126,29 @@ fn is_placeholder_text(name: &str, summary: &str, description: &str) -> bool {
         || description == format!("{} application", name)
 }
 
+/// Decode a package's on-disk cached icon into a Slint image, if present.
+fn load_icon_image(pkg_id: &str) -> Option<slint::Image> {
+    let safe_id = pkg_id.replace([':', '/'], "_");
+    let path = std::env::temp_dir()
+        .join("offerings_icons")
+        .join(format!("{}.png", safe_id));
+    if path.exists() {
+        if let Some(path_str) = path.to_str() {
+            // Try to open it. If it fails (e.g. corrupt or wrong format), we just stay default.
+            if let Ok(decoded) = image::open(path_str) {
+                let rgba = decoded.into_rgba8();
+                let buffer = slint::SharedPixelBuffer::<slint::Rgba8Pixel>::clone_from_slice(
+                    rgba.as_raw(),
+                    rgba.width(),
+                    rgba.height(),
+                );
+                return Some(slint::Image::from_rgba8(buffer));
+            }
+        }
+    }
+    None
+}
+
 fn wrap_progress_callback(
     callback: Arc<dyn Fn(f32) + Send + Sync>,
 ) -> Arc<dyn Fn(f32) + Send + Sync> {
@@ -137,6 +161,189 @@ fn wrap_progress_callback(
             callback(progress);
         }
     })
+}
+
+// ── Active operations (install / uninstall) tracker ─────────────────────────
+// Replaces the single `installing_package_id / install_progress` pair, which
+// could only ever show ONE operation: parallel installs overwrote each other
+// and the bar lingered on screen long after the work finished because a full
+// catalogue refresh ran before the overlay was cleared.
+//
+// Progress rows now live in a small map keyed by package id, mirrored into the
+// Slint `active-operations` model. Rows are removed as soon as the operation
+// completes so the overlay never outstays the work.
+#[derive(Clone)]
+struct ActiveOp {
+    package_id: String,
+    name: String,
+    is_uninstalling: bool,
+    progress: f32,
+    /// Last unix-ms timestamp the row was pushed to the UI (throttle).
+    last_sync: f64,
+}
+
+static ACTIVE_OPS: OnceLock<Mutex<HashMap<String, ActiveOp>>> = OnceLock::new();
+
+fn active_ops() -> &'static Mutex<HashMap<String, ActiveOp>> {
+    ACTIVE_OPS.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn now_ms() -> f64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as f64)
+        .unwrap_or(0.0)
+}
+
+/// Show an operation row (0 %). Must be called from the UI thread.
+fn op_register(ui: &MainWindow, package_id: &str, name: &str, is_uninstalling: bool) {
+    active_ops().lock().unwrap().insert(
+        package_id.to_string(),
+        ActiveOp {
+            package_id: package_id.to_string(),
+            name: name.to_string(),
+            is_uninstalling,
+            progress: 0.0,
+            last_sync: 0.0,
+        },
+    );
+    sync_active_ops(ui);
+}
+
+/// Update one row's progress, throttled to ~50 ms so the UI never floods.
+/// Must be called from the UI thread.
+fn op_update(ui: &MainWindow, package_id: &str, progress: f32) {
+    let mut ops = active_ops().lock().unwrap();
+    if let Some(op) = ops.get_mut(package_id) {
+        op.progress = progress.clamp(0.0, 1.0);
+        let now = now_ms();
+        if now - op.last_sync < 50.0 && op.progress < 1.0 {
+            return; // too soon for another push
+        }
+        op.last_sync = now;
+    } else {
+        return;
+    }
+    drop(ops);
+    sync_active_ops(ui);
+}
+
+/// Progress bars show the operation AS DONE and remove the row after a beat.
+/// Must be called from the UI thread.
+fn op_finish(ui: &MainWindow, package_id: &str) {
+    let ui_weak = ui.as_weak();
+    let package_id = package_id.to_string();
+    if let Some(op) = active_ops().lock().unwrap().get_mut(&package_id) {
+        op.progress = 1.0;
+        op.last_sync = now_ms();
+    }
+    sync_active_ops(ui);
+    slint::Timer::single_shot(std::time::Duration::from_millis(350), move || {
+        if let Some(ui) = ui_weak.upgrade() {
+            active_ops().lock().unwrap().remove(&package_id);
+            sync_active_ops(&ui);
+        }
+    });
+}
+
+/// Update ONLY the detail-page op state for the package currently selected
+/// (used when a package page is opened mid-operation). UI thread only.
+fn sync_detail_op_from_tracker(ui: &MainWindow, package_id: &str) {
+    let op = active_ops().lock().unwrap().get(package_id).cloned();
+    match op {
+        Some(op) => {
+            ui.set_detail_op_running(true);
+            ui.set_detail_op_uninstalling(op.is_uninstalling);
+            ui.set_detail_op_progress(op.progress);
+        }
+        None => ui.set_detail_op_running(false),
+    }
+}
+
+/// Mirror the tracker into the Slint model. Must be called from the UI thread.
+fn sync_active_ops(ui: &MainWindow) {    let rows: Vec<OperationStatus> = {
+        let ops = active_ops().lock().unwrap();
+        let mut rows: Vec<ActiveOp> = ops.values().cloned().collect();
+        // Oldest first so rows keep their order while cooking.
+        rows.sort_by(|a, b| a.last_sync.partial_cmp(&b.last_sync).unwrap());
+        rows.into_iter()
+            .map(|op| OperationStatus {
+                package_id: op.package_id.into(),
+                name: op.name.into(),
+                is_uninstalling: op.is_uninstalling,
+                progress: op.progress,
+            })
+            .collect()
+    };
+    ui.set_active_operations(slint::ModelRc::new(slint::VecModel::from(rows)));
+
+    // Keep the detail page's own progress row for the selected package in sync.
+    let selected_id = ui.get_selected_package().id.to_string();
+    let selected_op = active_ops().lock().unwrap().get(&selected_id).cloned();
+    match selected_op {
+        Some(op) => {
+            ui.set_detail_op_running(true);
+            ui.set_detail_op_uninstalling(op.is_uninstalling);
+            ui.set_detail_op_progress(op.progress);
+        }
+        None => {
+            ui.set_detail_op_running(false);
+        }
+    }
+}
+
+// ── Shared category model ────────────────────────────────────────────────────
+// "Show More Apps" used to replace the WHOLE category model, which re-created
+// every card and threw the scroll position away — the top of the list appeared
+// to vanish. The category grid now owns ONE VecModel; appending rows keeps the
+// existing cards (and the scrollbar) intact and only adds new ones at the end.
+//
+// The model must only ever be touched from the UI event-loop thread, which is
+// exactly where `Rc` (not thread-safe, cheap) is legal.
+thread_local! {
+    static CATEGORY_MODEL: std::cell::RefCell<Option<std::rc::Rc<slint::VecModel<PackageInfo>>>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+/// Monotonic counter for search requests. Only the most recent query's
+/// results are applied to the UI — a slow, stale query can never overwrite
+/// the answer to the query the user just typed.
+static SEARCH_SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// Get (or lazily create and install) the shared category grid model.
+/// Must be called from the UI thread.
+fn category_model(_ui: &MainWindow) -> slint::ModelRc<PackageInfo> {
+    CATEGORY_MODEL.with(|cell| {
+        let mut slot = cell.borrow_mut();
+        let model = slot.get_or_insert_with(|| std::rc::Rc::new(slint::VecModel::default()));
+        slint::ModelRc::from(model.clone())
+    })
+}
+
+/// Replace the whole category grid with `packages` (used on category change).
+/// Must be called from the UI thread.
+fn set_category_packages(ui: &MainWindow, packages: Vec<model::Package>) {
+    let infos: Vec<PackageInfo> = packages.iter().map(|p| package_to_slint_info(p.clone())).collect();
+    CATEGORY_MODEL.with(|cell| {
+        if let Some(model) = &*cell.borrow() {
+            model.set_vec(infos);
+        }
+    });
+    ui.set_current_category_packages(category_model(ui));
+}
+
+/// Append more packages to the category grid (used by "Show More Apps").
+/// Existing cards stay put; the scrollbar keeps its position. UI thread only.
+fn append_category_packages(packages: Vec<model::Package>) {
+    let mut infos: Vec<PackageInfo> = packages
+        .into_iter()
+        .map(package_to_slint_info)
+        .collect();
+    CATEGORY_MODEL.with(|cell| {
+        if let Some(model) = &*cell.borrow() {
+            model.extend_from_slice(&mut infos);
+        }
+    });
 }
 
 fn package_to_slint_info(pkg: model::Package) -> PackageInfo {
@@ -194,29 +401,27 @@ fn package_to_slint_info(pkg: model::Package) -> PackageInfo {
         homepage_url: pkg.metadata.homepage_url.clone().unwrap_or_default().into(),
         logical_id: pkg.logical_app_id.clone().unwrap_or_default().into(),
         favorite: is_favorite(&pkg.identity.id),
-        icon: {
-            let mut img = slint::Image::default();
-            let safe_id = pkg.identity.id.replace([':', '/'], "_");
-            let path = std::env::temp_dir()
-                .join("offerings_icons")
-                .join(format!("{}.png", safe_id));
-            if path.exists() {
-                if let Some(path_str) = path.to_str() {
-                    // Try to open it. If it fails (e.g. corrupt or wrong format), we just stay default.
-                    if let Ok(decoded) = image::open(path_str) {
-                        let rgba = decoded.into_rgba8();
-                        let buffer =
-                            slint::SharedPixelBuffer::<slint::Rgba8Pixel>::clone_from_slice(
-                                rgba.as_raw(),
-                                rgba.width(),
-                                rgba.height(),
-                            );
-                        img = slint::Image::from_rgba8(buffer);
-                    }
-                }
-            }
-            img
+        icon: load_icon_image(&pkg.identity.id).unwrap_or_default(),
+    }
+}
+
+/// Build a minimal Package for an id whose full record is unavailable —
+/// only used so optimistic install/uninstall state flips still render.
+fn placeholder_package(package_id: &str, name: &str) -> model::Package {
+    let source = crate::model::PackageSource::from_id(package_id);
+    model::Package {
+        identity: crate::model::PackageIdentity {
+            id: package_id.to_string(),
+            name: name.to_string(),
+            source,
         },
+        metadata: crate::model::PackageMetadata::default(),
+        version: crate::model::PackageVersion::default(),
+        is_installed: false,
+        logical_app_id: None,
+        alternatives: vec![],
+        last_updated: 0,
+        popularity: 0.0,
     }
 }
 
@@ -962,7 +1167,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     let tokio_handle = runtime.handle().clone();
 
-    // Search handler
+    // Search handler — backed by the Nucleo index, capped result set
     ui.on_search_triggered({
         let ui_weak = ui.as_weak();
         let backend = backend_clone.clone();
@@ -973,11 +1178,35 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             let query = query.to_string();
 
             let tokio_handle_spawn = tokio_handle.clone();
+            if query.trim().is_empty() {
+                // Empty box → clear results instantly, no work queued.
+                // Also invalidates any in-flight search result.
+                SEARCH_SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                let _ = slint::invoke_from_event_loop(move || {
+                    if let Some(ui) = ui_weak.upgrade() {
+                        ui.set_search_results(slint::ModelRc::new(slint::VecModel::from(
+                            Vec::<PackageInfo>::new(),
+                        )));
+                    }
+                });
+                return;
+            }
+            // Claim this query; later keystrokes bump the counter and make
+            // this task's results stale before they ever reach the UI.
+            let query_id =
+                SEARCH_SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
             tokio_handle.spawn(async move {
                 let results = backend.search_apps(&query).await;
+                if SEARCH_SEQ.load(std::sync::atomic::Ordering::Relaxed) != query_id {
+                    return; // a newer query superseded this one
+                }
                 let search_sem = Arc::new(tokio::sync::Semaphore::new(16));
+                // Only fetch icons for the first page of results — spawning
+                // one HTTP fetch per match was part of what froze the app
+                // when a query matched thousands of packages.
+                let icon_results = results.iter().take(60).cloned().collect();
                 spawn_list_icon_fetcher(
-                    results.clone(),
+                    icon_results,
                     tokio_handle_spawn,
                     ui_weak.clone(),
                     "search".into(),
@@ -1000,126 +1229,126 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let tokio_handle = tokio_handle.clone();
         move |pkg_id| {
             let backend = backend.clone();
+            let tokio = tokio_handle.clone();
             let pkg_id = pkg_id.to_string();
             let ui_weak = ui_weak.clone();
 
             eprintln!("Install clicked for: {}", pkg_id);
 
-            // Show installing status
-            let _ = slint::invoke_from_event_loop({
-                let ui_weak = ui_weak.clone();
-                let pkg_id = pkg_id.clone();
-                move || {
-                    if let Some(ui) = ui_weak.upgrade() {
-                        ui.set_installing_package_id(pkg_id.into());
-                        ui.set_install_progress(0.0);
-                    }
-                }
-            });
-
-            // Progress callback for real-time updates
-            let ui_progress_weak = ui_weak.clone();
-            let base_callback = Arc::new(move |p: f32| {
-                let ui_weak = ui_progress_weak.clone();
-                let _ = slint::invoke_from_event_loop(move || {
-                    if let Some(ui) = ui_weak.upgrade() {
-                        ui.set_install_progress(p.min(0.95));
-                    }
-                });
-            });
-            let progress_callback = wrap_progress_callback(base_callback);
-
-            tokio_handle.spawn(async move {
-                // Get package name for progress overlay
+            tokio.clone().spawn(async move {
+                // Package display name for the operation row
                 let pkg_name = if let Some(pkg) = backend.get_package(&pkg_id).await {
                     pkg.identity.name
                 } else {
                     pkg_id.clone()
                 };
 
+                // Show the operation row instantly (0 %)
                 let _ = slint::invoke_from_event_loop({
                     let ui_weak = ui_weak.clone();
+                    let pkg_id = pkg_id.clone();
                     let name = pkg_name.clone();
                     move || {
                         if let Some(ui) = ui_weak.upgrade() {
-                            ui.set_installing_package_name(name.into());
-                            ui.set_is_uninstalling(false);
+                            op_register(&ui, &pkg_id, &name, false);
                         }
                     }
                 });
 
-                let op = PackageOperation::Install(pkg_id.clone());
-                match backend.execute_operation(op, Some(progress_callback)).await {
-                    Ok(result) => {
-                        eprintln!(
-                            "Install result: success={}, message={}",
-                            result.success, result.message
-                        );
-
-                        if result.success {
-                            let package = match backend.reconcile_package_state(&pkg_id, true).await
-                            {
-                                Some(pkg) => Some(pkg),
-                                None => backend.get_package(&pkg_id).await,
-                            };
-                            let installed = backend.get_installed_packages().await;
-
-                            let _ = slint::invoke_from_event_loop({
-                                let ui_weak = ui_weak.clone();
-                                let installed = installed.clone();
-                                move || {
-                                    if let Some(ui) = ui_weak.upgrade() {
-                                        if let Some(pkg) = package {
-                                            let mut slint_pkg = package_to_slint_info(pkg.clone());
-                                            slint_pkg.is_installed = true; // Ensure UI reflects it instantly
-
-                                            // Create desktop entry
-                                            create_desktop_entry(&pkg);
-
-                                            // Update all active models with the new state
-                                            update_package_in_all_models(&ui, &slint_pkg);
-
-                                            // Update selected package if it's the one we just installed
-                                            if ui.get_selected_package().id == slint_pkg.id {
-                                                ui.set_selected_package(slint_pkg);
-                                            }
-                                        }
-
-                                        ui.set_installed_packages(convert_to_slint_packages(
-                                            installed,
-                                        ));
-                                        ui.set_install_progress(1.0);
-
-                                        // Clear overlay last so user sees the transition
-                                        let ui_weak_done = ui_weak.clone();
-                                        slint::Timer::single_shot(
-                                            std::time::Duration::from_millis(250),
-                                            move || {
-                                                if let Some(ui) = ui_weak_done.upgrade() {
-                                                    ui.set_installing_package_id("".into());
-                                                }
-                                            },
-                                        );
-                                    }
-                                }
-                            });
-                        } else {
-                            eprintln!("Install failed: {}", result.message);
-                            let _ = slint::invoke_from_event_loop(move || {
-                                if let Some(ui) = ui_weak.upgrade() {
-                                    ui.set_installing_package_id("".into());
-                                }
-                            });
-                        }
-                    }
-                    Err(e) => {
-                        eprintln!("Install error: {}", e);
+                // Real-time progress → the row for THIS package
+                let progress_callback: crate::adapters::ProgressCallback = Arc::new({
+                    let ui_weak = ui_weak.clone();
+                    let pkg_id = pkg_id.clone();
+                    move |p: f32| {
+                        let ui_weak = ui_weak.clone();
+                        let pkg_id = pkg_id.clone();
                         let _ = slint::invoke_from_event_loop(move || {
                             if let Some(ui) = ui_weak.upgrade() {
-                                ui.set_installing_package_id("".into());
+                                op_update(&ui, &pkg_id, p);
                             }
                         });
                     }
+                });
+
+                let op = PackageOperation::Install(pkg_id.clone());
+                let result = backend.execute_operation(op, Some(progress_callback)).await;
+
+                match &result {
+                    Ok(r) => eprintln!("Install result: success={}, message={}", r.success, r.message),
+                    Err(e) => eprintln!("Install error: {}", e),
+                }
+
+                // The row's job ends the moment the operation itself ends.
+                let _ = slint::invoke_from_event_loop({
+                    let ui_weak = ui_weak.clone();
+                    let pkg_id = pkg_id.clone();
+                    move || {
+                        if let Some(ui) = ui_weak.upgrade() {
+                            op_finish(&ui, &pkg_id);
+                        }
+                    }
+                });
+
+                match result {
+                    Ok(result) if result.success => {
+                        // Instant optimistic state: flip the card/list state
+                        // right away instead of waiting for reconciliation.
+                        let cached = backend.get_package(&pkg_id).await;
+                        let _ = slint::invoke_from_event_loop({
+                            let ui_weak = ui_weak.clone();
+                            let cached = cached;
+                            let pkg_id = pkg_id.clone();
+                            let name = pkg_name.clone();
+                            move || {
+                                if let Some(ui) = ui_weak.upgrade() {
+                                    let mut slint_pkg = match cached {
+                                        Some(pkg) => {
+                                            let s = package_to_slint_info(pkg.clone());
+                                            create_desktop_entry(&pkg);
+                                            s
+                                        }
+                                        None => package_to_slint_info(placeholder_package(
+                                            &pkg_id, &name,
+                                        )),
+                                    };
+                                    slint_pkg.is_installed = true;
+                                    update_package_in_all_models(&ui, &slint_pkg);
+                                    if ui.get_selected_package().id == slint_pkg.id {
+                                        ui.set_selected_package(slint_pkg);
+                                    }
+                                }
+                            }
+                        });
+
+                        // Post-op finalisation: TRUE state check + whole-catalogue
+                        // refresh, both in the background where they belong.
+                        let backend_bg = backend.clone();
+                        let ui_finalize = ui_weak.clone();
+                        tokio.spawn(async move {
+                            let package = match backend_bg.reconcile_package_state(&pkg_id, true).await {
+                                Some(pkg) => Some(pkg),
+                                None => backend_bg.get_package(&pkg_id).await,
+                            };
+                            let _ = backend_bg.refresh_cache().await;
+                            let installed = backend_bg.get_installed_packages().await;
+                            let _ = slint::invoke_from_event_loop(move || {
+                                if let Some(ui) = ui_finalize.upgrade() {
+                                    ui.set_installed_packages(convert_to_slint_packages(installed));
+                                    if let Some(pkg) = package {
+                                        let mut slint_pkg = package_to_slint_info(pkg.clone());
+                                        slint_pkg.is_installed = true;
+                                        create_desktop_entry(&pkg);
+                                        update_package_in_all_models(&ui, &slint_pkg);
+                                        if ui.get_selected_package().id == slint_pkg.id {
+                                            ui.set_selected_package(slint_pkg);
+                                        }
+                                    }
+                                }
+                            });
+                        });
+                    }
+                    Ok(result) => eprintln!("Install failed: {}", result.message),
+                    Err(e) => eprintln!("Install error: {}", e),
                 }
             });
         }
@@ -1136,8 +1365,38 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             let ui_weak = ui_weak.clone();
 
             tokio_handle.spawn(async move {
+                let name = backend
+                    .get_package(&pkg_id)
+                    .await
+                    .map(|p| p.identity.name)
+                    .unwrap_or_else(|| pkg_id.clone());
+
+                // Show the operation row (updating without fine-grained progress)
+                let _ = slint::invoke_from_event_loop({
+                    let ui_weak = ui_weak.clone();
+                    let pkg_id = pkg_id.clone();
+                    let name = name.clone();
+                    move || {
+                        if let Some(ui) = ui_weak.upgrade() {
+                            op_register(&ui, &pkg_id, &name, false);
+                        }
+                    }
+                });
+
                 let op = PackageOperation::Update(pkg_id.clone());
-                match backend.execute_operation(op, None).await {
+                let result = backend.execute_operation(op, None).await;
+
+                let _ = slint::invoke_from_event_loop({
+                    let ui_weak = ui_weak.clone();
+                    let pkg_id = pkg_id.clone();
+                    move || {
+                        if let Some(ui) = ui_weak.upgrade() {
+                            op_finish(&ui, &pkg_id);
+                        }
+                    }
+                });
+
+                match result {
                     Ok(_) => {
                         let installed = backend.get_installed_packages().await;
                         let selected = backend.get_package(&pkg_id).await;
@@ -1177,93 +1436,123 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let tokio_handle = tokio_handle.clone();
         move |pkg_id| {
             let backend = backend.clone();
+            let tokio = tokio_handle.clone();
             let pkg_id = pkg_id.to_string();
             let ui_weak = ui_weak.clone();
 
             eprintln!("Uninstall clicked for: {}", pkg_id);
 
-            // Show uninstall status
-            let _ = slint::invoke_from_event_loop({
-                let ui_weak = ui_weak.clone();
-                let pkg_id = pkg_id.clone();
-                move || {
-                    if let Some(ui) = ui_weak.upgrade() {
-                        ui.set_installing_package_id(pkg_id.into());
-                        ui.set_is_uninstalling(true);
-                        ui.set_install_progress(0.0);
-                    }
-                }
-            });
-
-            // Progress callback for real-time updates
-            let ui_progress_weak = ui_weak.clone();
-            let base_callback = Arc::new(move |p: f32| {
-                let ui_weak = ui_progress_weak.clone();
-                let _ = slint::invoke_from_event_loop(move || {
-                    if let Some(ui) = ui_weak.upgrade() {
-                        ui.set_install_progress(p.min(0.95));
-                    }
-                });
-            });
-            let progress_callback = wrap_progress_callback(base_callback);
-
-            tokio_handle.spawn(async move {
-                // Get package name
+            tokio.clone().spawn(async move {
+                // Package display name for the operation row
                 let pkg_name = if let Some(pkg) = backend.get_package(&pkg_id).await {
                     pkg.identity.name
                 } else {
                     pkg_id.clone()
                 };
 
+                // Show the operation row instantly (0 %)
                 let _ = slint::invoke_from_event_loop({
                     let ui_weak = ui_weak.clone();
+                    let pkg_id = pkg_id.clone();
                     let name = pkg_name.clone();
                     move || {
                         if let Some(ui) = ui_weak.upgrade() {
-                            ui.set_installing_package_name(name.into());
+                            op_register(&ui, &pkg_id, &name, true);
                         }
                     }
                 });
 
-                let op = PackageOperation::Uninstall(pkg_id.clone());
-                match backend.execute_operation(op, Some(progress_callback)).await {
-                    Ok(_) => {
-                        let installed = backend.get_installed_packages().await;
-                        let package = match backend.reconcile_package_state(&pkg_id, false).await {
-                            Some(pkg) => Some(pkg),
-                            None => backend.get_package(&pkg_id).await,
-                        };
+                // Real-time progress → the row for THIS package
+                let progress_callback: crate::adapters::ProgressCallback = Arc::new({
+                    let ui_weak = ui_weak.clone();
+                    let pkg_id = pkg_id.clone();
+                    move |p: f32| {
+                        let ui_weak = ui_weak.clone();
+                        let pkg_id = pkg_id.clone();
                         let _ = slint::invoke_from_event_loop(move || {
                             if let Some(ui) = ui_weak.upgrade() {
-                                ui.set_installed_packages(convert_to_slint_packages(installed));
-                                ui.set_install_progress(1.0);
-                                if let Some(pkg) = package {
-                                    let slint_pkg = package_to_slint_info(pkg);
+                                op_update(&ui, &pkg_id, p);
+                            }
+                        });
+                    }
+                });
+
+                let op = PackageOperation::Uninstall(pkg_id.clone());
+                let result = backend.execute_operation(op, Some(progress_callback)).await;
+
+                match &result {
+                    Ok(r) => eprintln!(
+                        "Uninstall result: success={}, message={}", r.success, r.message
+                    ),
+                    Err(e) => eprintln!("Uninstall failed: {}", e),
+                }
+
+                // The row's job ends the moment the operation itself ends.
+                let _ = slint::invoke_from_event_loop({
+                    let ui_weak = ui_weak.clone();
+                    let pkg_id = pkg_id.clone();
+                    move || {
+                        if let Some(ui) = ui_weak.upgrade() {
+                            op_finish(&ui, &pkg_id);
+                        }
+                    }
+                });
+
+                match result {
+                    Ok(result) if result.success => {
+                        // Instant optimistic state: the card flips to
+                        // "Install" immediately — this is what previously
+                        // stayed stale and caused repeated failed uninstalls.
+                        let pkg_id_ui = pkg_id.clone();
+                        let cached = backend.get_package(&pkg_id).await;
+                        let _ = slint::invoke_from_event_loop({
+                            let ui_weak = ui_weak.clone();
+                            let cached = cached;
+                            move || {
+                                if let Some(ui) = ui_weak.upgrade() {
+                                    let mut slint_pkg = match cached {
+                                        Some(pkg) => package_to_slint_info(pkg),
+                                        None => package_to_slint_info(placeholder_package(
+                                            &pkg_id_ui, &pkg_name,
+                                        )),
+                                    };
+                                    slint_pkg.is_installed = false;
+                                    slint_pkg.installed_version = "".into();
+                                    slint_pkg.has_update = false;
                                     update_package_in_all_models(&ui, &slint_pkg);
                                     if ui.get_selected_package().id == slint_pkg.id {
                                         ui.set_selected_package(slint_pkg);
                                     }
                                 }
-                                let ui_weak_done = ui_weak.clone();
-                                slint::Timer::single_shot(
-                                    std::time::Duration::from_millis(250),
-                                    move || {
-                                        if let Some(ui) = ui_weak_done.upgrade() {
-                                            ui.set_installing_package_id("".into());
+                            }
+                        });
+
+                        // Post-op finalisation in the background.
+                        let backend_bg = backend.clone();
+                        let ui_finalize = ui_weak.clone();
+                        tokio.spawn(async move {
+                            let package = match backend_bg.reconcile_package_state(&pkg_id, false).await {
+                                Some(pkg) => Some(pkg),
+                                None => backend_bg.get_package(&pkg_id).await,
+                            };
+                            let _ = backend_bg.refresh_cache().await;
+                            let installed = backend_bg.get_installed_packages().await;
+                            let _ = slint::invoke_from_event_loop(move || {
+                                if let Some(ui) = ui_finalize.upgrade() {
+                                    ui.set_installed_packages(convert_to_slint_packages(installed));
+                                    if let Some(pkg) = package {
+                                        let slint_pkg = package_to_slint_info(pkg);
+                                        update_package_in_all_models(&ui, &slint_pkg);
+                                        if ui.get_selected_package().id == slint_pkg.id {
+                                            ui.set_selected_package(slint_pkg);
                                         }
-                                    },
-                                );
-                            }
+                                    }
+                                }
+                            });
                         });
                     }
-                    Err(e) => {
-                        eprintln!("Uninstall failed: {}", e);
-                        let _ = slint::invoke_from_event_loop(move || {
-                            if let Some(ui) = ui_weak.upgrade() {
-                                ui.set_installing_package_id("".into());
-                            }
-                        });
-                    }
+                    Ok(_) => {}
+                    Err(_) => {} // already logged
                 }
             });
         }
@@ -1331,6 +1620,8 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                                     ui.set_show_settings(false);
                                     ui.set_show_dep_detail(false);
                                     ui.set_is_transitioning(false); // Ensure we're not blocked
+                                    // In case THIS package already has a running op
+                                    sync_detail_op_from_tracker(&ui, &pkg_id);
                                 }
                             }
                         });
@@ -1465,7 +1756,8 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
                             let slint_pkgs = convert_to_slint_packages(initial_packages.clone());
 
-                            ui.set_current_category_packages(slint_pkgs.clone());
+                            ui.set_current_category_packages(category_model(&ui));
+                            set_category_packages(&ui, initial_packages.clone());
                             ui.set_current_category_name(cat_name.into());
                             ui.set_current_category_icon(cat_icon.into());
 
@@ -1548,29 +1840,27 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                             let has_more =
                                 all_matches.len() > (current_count + next_packages.len());
 
-                            let mut combined_packages = all_matches
-                                .iter()
-                                .take(current_count + next_packages.len())
-                                .cloned()
-                                .collect::<Vec<_>>();
-                            combined_packages.shrink_to_fit();
-                            ui.set_current_category_packages(convert_to_slint_packages(
-                                combined_packages,
-                            ));
                             ui.set_current_category_visible_count(
                                 (current_count + next_packages.len()) as i32,
                             );
                             ui.set_current_category_has_more(has_more);
 
-                            // Fetch icons for new batch
+                            // Append the new page to the SAME model the grid
+                            // already renders. Existing cards (and the scroll
+                            // position) stay intact; the new rows appear below.
+                            append_category_packages(next_packages.clone());
+
+                            // Fetch icons across the whole visible catalogue —
+                            // icon updates write into shared-model rows
+                            // in place, so nothing gets re-created.
                             let tokio_handle_inner = icon_fetch_handle.clone();
                             let shared_sem = Arc::new(tokio::sync::Semaphore::new(16));
                             spawn_list_icon_fetcher(
-                                next_packages,
+                                all_matches,
                                 tokio_handle_inner,
                                 ui_weak.clone(),
                                 "catalogue".into(),
-                                None,
+                                Some(current_count + next_packages.len()),
                                 shared_sem,
                             );
                         }
@@ -2876,10 +3166,23 @@ fn update_package_in_all_models(ui: &MainWindow, updated_pkg: &PackageInfo) {
     ui.set_featured_lifestyle(update_model(ui.get_featured_lifestyle(), updated_pkg));
     ui.set_featured_miscellaneous(update_model(ui.get_featured_miscellaneous(), updated_pkg));
     ui.set_search_results(update_model(ui.get_search_results(), updated_pkg));
-    ui.set_current_category_packages(update_model(
-        ui.get_current_category_packages(),
-        updated_pkg,
-    ));
+    // The category grid uses the SHARED model: patch the matching rows in
+    // place so "Show More Apps" scroll position & structure stay untouched.
+    CATEGORY_MODEL.with(|cell| {
+        if let Some(model) = &*cell.borrow() {
+            for i in 0..model.row_count() {
+                if let Some(mut row) = model.row_data(i) {
+                    if row.id == updated_pkg.id {
+                        row.is_installed = updated_pkg.is_installed;
+                        row.installed_version = updated_pkg.installed_version.clone();
+                        row.has_update = updated_pkg.has_update;
+                        row.favorite = updated_pkg.favorite;
+                        model.set_row_data(i, row);
+                    }
+                }
+            }
+        }
+    });
 
     // Update the dynamic categories list (homepage sections)
     let cats_model = ui.get_categories();
@@ -2982,6 +3285,13 @@ fn spawn_list_icon_fetcher(
             let limit_refresh = limit;
             let _ = slint::invoke_from_event_loop(move || {
                 if let Some(ui) = ui_weak_refresh.upgrade() {
+                    // The catalogue grid uses the SHARED model: icons are
+                    // written into existing rows in place, so cards never get
+                    // re-created (which used to reset scroll & ditch state).
+                    if cat_refresh == "catalogue" {
+                        update_catalogue_icons(&pkgs_refresh);
+                        return;
+                    }
                     let slint_pkgs = if let Some(l) = limit_refresh {
                         limit_and_convert(pkgs_refresh, l)
                     } else {
@@ -3027,11 +3337,33 @@ fn spawn_list_icon_fetcher(
                         "web-browser" => ui.set_category_web_browser(slint_pkgs),
                         "wine" => ui.set_category_wine(slint_pkgs),
                         "miscellaneous" => ui.set_category_miscellaneous(slint_pkgs),
-                        "catalogue" => ui.set_current_category_packages(slint_pkgs),
                         _ => {}
                     }
                 }
             });
+        }
+    });
+}
+
+/// Write freshly downloaded icons into the shared category-grid model in
+/// place. Only touches rows whose icon actually changed; everything else
+/// (scroll position, button states) is untouched. UI thread only.
+fn update_catalogue_icons(packages: &[model::Package]) {
+    CATEGORY_MODEL.with(|cell| {
+        let model = match &*cell.borrow() {
+            Some(m) => m.clone(),
+            None => return,
+        };
+        for (i, pkg) in packages.iter().enumerate() {
+            let Some(mut info) = model.row_data(i) else { break };
+            // An untouched placeholder icon decodes to a 0×0 size.
+            if info.icon.size().width > 0 {
+                continue;
+            }
+            if let Some(img) = load_icon_image(&pkg.identity.id) {
+                info.icon = img;
+                model.set_row_data(i, info);
+            }
         }
     });
 }

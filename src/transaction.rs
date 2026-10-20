@@ -3,7 +3,7 @@ use crate::db::Database;
 use crate::model::{OperationResult, Package, PackageOperation, TransactionLog, TransactionStatus};
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
-use tokio::sync::{broadcast, Mutex as TokioMutex};
+use tokio::sync::broadcast;
 
 /// Transaction event for subscribers
 #[derive(Clone, Debug)]
@@ -29,9 +29,15 @@ pub enum TransactionEvent {
 }
 
 /// Transaction manager for safe package operations
+///
+/// NOTE: this manager no longer serialises operations globally with a single
+/// `operation_lock`. Global serialisation made installing one app block every
+/// other install/uninstall for its whole duration. Concurrency is now bounded
+/// by the backend's operation semaphore (see `BackendService`), which allows
+/// several operations while still capping how many hit the package managers
+/// at once. DB access stays safe via `Database`'s internal mutex.
 pub struct TransactionManager {
     db: Arc<Database>,
-    operation_lock: Arc<TokioMutex<()>>,
     event_sender: broadcast::Sender<TransactionEvent>,
     pending_operations: Arc<Mutex<VecDeque<PendingOperation>>>,
 }
@@ -47,7 +53,6 @@ impl TransactionManager {
         let (event_sender, _) = broadcast::channel(100);
         Self {
             db,
-            operation_lock: Arc::new(TokioMutex::new(())),
             event_sender,
             pending_operations: Arc::new(Mutex::new(VecDeque::new())),
         }
@@ -71,9 +76,6 @@ impl TransactionManager {
             Output = Result<OperationResult, Box<dyn std::error::Error + Send + Sync>>,
         >,
     {
-        // Acquire operation lock
-        let _lock = self.operation_lock.lock().await;
-
         // Get operation details
         let (op_name, pkg_id) = match operation {
             PackageOperation::Install(id) => ("install", id.clone()),

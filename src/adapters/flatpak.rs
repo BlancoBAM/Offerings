@@ -734,11 +734,28 @@ impl PackageAdapter for FlatpakAdapter {
                 message: format!("Successfully removed {}", app_id),
                 updated_packages: vec![package_id.to_string()],
             }),
-            Err(e) => Ok(OperationResult {
-                success: false,
-                message: format!("Failed to remove {}: {}", app_id, e),
-                updated_packages: vec![],
-            }),
+            Err(e) => {
+                let msg = e.to_string();
+                // Idempotent uninstall: removals must never retry-fail after
+                // the app is already gone ("No installed refs found"). This
+                // used to leave the card visible while flatpak refused with
+                // exit 1, so the user clicked Uninstall again and again.
+                if msg.contains("No installed refs found")
+                    || msg.contains("not installed")
+                {
+                    Ok(OperationResult {
+                        success: true,
+                        message: format!("{} was already removed", app_id),
+                        updated_packages: vec![package_id.to_string()],
+                    })
+                } else {
+                    Ok(OperationResult {
+                        success: false,
+                        message: format!("Failed to remove {}: {}", app_id, msg),
+                        updated_packages: vec![],
+                    })
+                }
+            }
         };
 
         if result.as_ref().map(|r| r.success).unwrap_or(false) {

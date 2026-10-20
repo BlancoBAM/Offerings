@@ -40,6 +40,10 @@ dirs = "5.0"
 # Time handling
 chrono = { version = "0.4", features = ["serde"] }
 
+# Fuzzy search - concurrent, background-threaded matcher (helix-editor/nucleo)
+# Replaces the synchronous per-keystroke scan that froze the GUI on 10k+ catalogues
+nucleo = "0.5"
+
 # Unix-specific features
 libc = "0.2"
 image = "0.25.10"

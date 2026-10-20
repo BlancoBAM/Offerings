@@ -9,12 +9,23 @@ use crate::model::{
     AppDetailInfo, HomePageContent, OperationResult, Package, PackageOperation, PackageSource,
 };
 use crate::notifications::{NotificationManager, NotificationType};
+use crate::search::SearchEngine;
 use crate::transaction::TransactionManager;
 use std::collections::HashMap;
 use std::path::Path;
-use std::sync::{Arc, RwLock as StdRwLock};
+use std::sync::{Arc, Mutex, RwLock as StdRwLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::RwLock;
+
+/// How many package operations (install/update/uninstall) may run at once.
+/// Package managers like flatpak and snap keep their own internal locks, so a
+/// small global pool avoids backend lock contention while still letting the
+/// store do several things in parallel.
+const MAX_CONCURRENT_OPERATIONS: usize = 3;
+
+/// Cap on how many packages a single search returns to the UI. Every match is
+/// cloned into the results; unbounded result sets are what froze the GUI.
+pub const SEARCH_RESULT_LIMIT: usize = 200;
 
 /// Core backend service managing all package operations
 pub struct BackendService {
@@ -26,6 +37,13 @@ pub struct BackendService {
     notifications: Arc<NotificationManager>,
     home_content: HomePageContent,
     metadata_catalog: Arc<StdRwLock<MetadataCatalog>>,
+    /// Nucleo-backed fuzzy search index over the package cache
+    search: Arc<SearchEngine>,
+    /// Global operation pool: at most MAX_CONCURRENT_OPERATIONS at a time.
+    operation_slots: Arc<tokio::sync::Semaphore>,
+    /// Package ids currently being operated on (prevents duplicate
+    /// install/uninstall races on the same app from repeated clicks).
+    busy_packages: Arc<Mutex<std::collections::HashSet<String>>>,
 }
 
 impl BackendService {
@@ -300,6 +318,9 @@ impl BackendService {
             notifications,
             home_content,
             metadata_catalog: Arc::new(StdRwLock::new(metadata_catalog)),
+            search: Arc::new(SearchEngine::new(Some(4))),
+            operation_slots: Arc::new(tokio::sync::Semaphore::new(MAX_CONCURRENT_OPERATIONS)),
+            busy_packages: Arc::new(Mutex::new(std::collections::HashSet::new())),
         })
     }
 
@@ -331,6 +352,9 @@ impl BackendService {
             notifications,
             home_content,
             metadata_catalog: Arc::new(StdRwLock::new(metadata_catalog)),
+            search: Arc::new(SearchEngine::new(Some(2))),
+            operation_slots: Arc::new(tokio::sync::Semaphore::new(MAX_CONCURRENT_OPERATIONS)),
+            busy_packages: Arc::new(Mutex::new(std::collections::HashSet::new())),
         })
     }
 
@@ -375,6 +399,9 @@ impl BackendService {
                 eprintln!("Warning: Failed to load packages from DB for warm-up: {}", e);
             }
         }
+        // The warm-up data is what search serves until the first full refresh
+        // completes; make sure the index has it too.
+        self.rebuild_search_index().await;
     }
 
     /// Refresh cache from all available adapters
@@ -402,8 +429,13 @@ impl BackendService {
             adapter_count
         );
 
-        let mut cache = self.package_cache.write().await;
-        cache.clear();
+        // ─── Build the ENTIRE new cache off to the side, then swap it in ───
+        // The old code cleared the live cache first and slowly refilled it,
+        // which meant live queries (search, browse, category counts) returned
+        // nothing while a refresh was in flight — the "Video shows 1254 in
+        // the sidebar but nothing in the grid" bug. Building `fresh` first
+        // means browsing always sees a complete snapshot; the swap is atomic.
+        let mut cache: HashMap<String, Package> = HashMap::new();
 
         let emit = {
             let progress = progress.clone();
@@ -560,6 +592,14 @@ impl BackendService {
         }
 
         println!("Cache refreshed: {} packages loaded", cache.len());
+
+        // ─── Atomic swap: the live cache jumps from the previous complete
+        // snapshot straight to this new one. Never an empty in-between.
+        {
+            let mut live = self.package_cache.write().await;
+            *live = std::mem::take(&mut cache);
+        }
+
         // ─── Stage 4: prune stale per-source duplicates from the DB ───
         {
             let favorites = self.db.get_favorites().unwrap_or_default();
@@ -577,6 +617,9 @@ impl BackendService {
         if let Some(cb) = &progress {
             cb(1.0, "Refresh complete".to_string());
         }
+
+        // Keep the fuzzy search index in lockstep with the refreshed cache.
+        self.rebuild_search_index().await;
 
         Ok(())
     }
@@ -728,58 +771,37 @@ impl BackendService {
         result
     }
 
+    /// Rebuild the search index from the current package cache. Runs as a
+    /// backgroundable sub-task; Nucleo ingests lock-free on its worker pool.
+    pub async fn rebuild_search_index(&self) {
+        let cache = self.package_cache.read().await;
+        let apps: Vec<Package> = cache
+            .values()
+            .filter(|pkg| pkg.is_app())
+            .cloned()
+            .collect();
+        drop(cache);
+        self.search.rebuild(apps);
+        eprintln!(
+            "Search index rebuilt: {} apps indexed",
+            self.search.indexed_count()
+        );
+    }
+
     /// Search apps by name or description
     pub async fn search_apps(&self, query: &str) -> Vec<Package> {
-        let cache = self.package_cache.read().await;
-        let query_lower = query.to_lowercase();
+        if query.trim().is_empty() {
+            return Vec::new();
+        }
 
-        let matches = cache
-            .values()
-            .filter(|pkg| {
-                if !pkg.is_app() {
-                    return false;
-                }
+        // The Nucleo index should always lag at most one refresh behind the
+        // cache; if it is missing entirely (never built), build it once, then
+        // answer from it.
+        if self.search.indexed_count() == 0 {
+            self.rebuild_search_index().await;
+        }
 
-                let name = pkg.identity.name.to_lowercase();
-                let summary = pkg.metadata.summary.to_lowercase();
-                let description = pkg.metadata.description.to_lowercase();
-
-                // Search in name, summary, and description
-                name.contains(&query_lower)
-                    || summary.contains(&query_lower)
-                    || description.contains(&query_lower)
-                    || pkg
-                        .metadata
-                        .categories
-                        .iter()
-                        .any(|c| c.to_lowercase().contains(&query_lower))
-            })
-            .cloned();
-
-        // Cache is already deduplicated at refresh time; just collect.
-        let mut result: Vec<Package> = matches.collect();
-
-        // Sort results: matches in name come first, then by discovery score
-        result.sort_by(|a, b| {
-            let a_name = a.identity.name.to_lowercase();
-            let b_name = b.identity.name.to_lowercase();
-            let a_starts = a_name.starts_with(&query_lower);
-            let b_starts = b_name.starts_with(&query_lower);
-
-            if a_starts && !b_starts {
-                std::cmp::Ordering::Less
-            } else if !a_starts && b_starts {
-                std::cmp::Ordering::Greater
-            } else {
-                // Secondary sort: Discovery Score (Recency + Popularity + Metadata)
-                let a_score = self.calculate_discovery_score(a);
-                let b_score = self.calculate_discovery_score(b);
-
-                b_score.partial_cmp(&a_score).unwrap_or(a_name.cmp(&b_name))
-            }
-        });
-
-        result
+        self.search.search(query, SEARCH_RESULT_LIMIT)
     }
 
     /// Get apps by category
@@ -1633,6 +1655,36 @@ impl BackendService {
         operation: PackageOperation,
         progress_callback: Option<crate::adapters::ProgressCallback>,
     ) -> Result<OperationResult, Box<dyn std::error::Error + Send + Sync>> {
+        // Bound the operation pool: at most MAX_CONCURRENT_OPERATIONS package
+        // operations run at once, the rest queue up (UI shows them as rows).
+        let _permit = self
+            .operation_slots
+            .clone()
+            .acquire_owned()
+            .await
+            .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { e.to_string().into() })?;
+
+        // One operation per package at any time — double-clicks must not start
+        // two competing installs/uninstalls of the same app.
+        let busy_key = match &operation {
+            PackageOperation::UpdateAll => "update-all".to_string(),
+            other => other.package_id().unwrap_or_default().to_string(),
+        };        {
+            let mut busy = self.busy_packages.lock().unwrap();
+            if !busy.insert(busy_key.clone()) {
+                return Err(format!(
+                    "'{}' is already being processed; wait for it to finish first.",
+                    busy_key
+                )
+                .into());
+            }
+        }
+        // RAII safety: always release the package slot, whatever happens.
+        let busy_slot = BusyRelease {
+            set: self.busy_packages.clone(),
+            key: busy_key,
+        };
+
         // Get the package for transaction logging
         let package = if let Some(pkg_id) = operation.package_id() {
             self.get_package(pkg_id).await
@@ -1771,11 +1823,12 @@ impl BackendService {
             })
             .await?;
 
-        // Refresh cache after successful operation
-        if result.success {
-            let _ = self.refresh_cache().await;
-        }
-
+        // NOTE: no cache-wide refresh here — reconcile_package_state already
+        // updated the package row in the DB and in-memory cache, and doing a
+        // full catalogue rescan after every op kept the progress overlay on
+        // screen for ages after completion. The UI layer schedules a
+        // background refresh from its Arc<BackendService> instead.
+        drop(busy_slot);
         Ok(result)
     }
 
@@ -1940,6 +1993,19 @@ impl BackendService {
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let adapter = self.find_adapter_for_package(package_id).await?;
         adapter.launch(package_id).await
+    }
+}
+
+/// RAII guard that removes a package from the busy-set when its operation ends
+/// (success, failure or error path). Guarantees a later click can retry.
+struct BusyRelease {
+    set: Arc<Mutex<std::collections::HashSet<String>>>,
+    key: String,
+}
+
+impl Drop for BusyRelease {
+    fn drop(&mut self) {
+        self.set.lock().unwrap().remove(&self.key);
     }
 }
 

@@ -16,6 +16,16 @@ export struct AlternativeSource {
     source: string,
 }
 
+// One live install/uninstall row for the operations panel. Several can run
+// in parallel; each owns its compact bar under the top bar (and its own
+// mini bar on the package detail page).
+export struct OperationStatus {
+    package-id: string,
+    name: string,
+    is-uninstalling: bool,
+    progress: float,
+}
+
 export struct PackageInfo {
     id: string,
     name: string,
@@ -214,36 +224,73 @@ component LoadingScreen inherits Rectangle {
     }
 }
 
-// Global Progress Overlay for install/uninstall
-component GlobalProgressOverlay inherits Rectangle {
-    in property <string> package-name;
-    in property <float> progress;
-    in property <bool> is-uninstalling;
-    
-    height: 60px;
+// One live operation row for the operations panel — compact, fire-gradient
+// bar per running install/uninstall.
+component OperationRow inherits Rectangle {
+    in property <OperationStatus> operation;
+
+    height: 44px;
     background: AppColors.bg-secondary;
     border-width: 1px;
     border-color: AppColors.border-accent;
     border-radius: 8px;
-    
+
     HorizontalLayout {
-        padding: 12px;
-        spacing: 16px;
-        alignment: center;
-        
+        padding-left: 12px;
+        padding-right: 12px;
+        spacing: 10px;
+
+        Text {
+            text: operation.is-uninstalling ? "→" : "←";
+            color: AppColors.accent-secondary;
+            font-size: 14px;
+            vertical-alignment: center;
+        }
+
         VerticalLayout {
-            spacing: 4px;
+            spacing: 3px;
             alignment: center;
+
             Text {
-                text: (is-uninstalling ? "Uninstalling " : "Installing ") + package-name + "...";
+                text: (operation.is-uninstalling ? "Removing " : "Offering ")
+                      + operation.name + " →" + Math.round(operation.progress * 100) + "%";
                 color: AppColors.text-primary;
-                font-size: 14px;
+                font-size: 13px;
                 font-weight: 700;
+                overflow: elide;
             }
-            ProgressBar {
-                width: 300px;
-                progress: root.progress;
+
+            Rectangle {
+                width: 220px;
+                height: 8px;
+                background: #1a0505;
+                border-radius: 4px;
+                clip: true;
+
+                Rectangle {
+                    width: parent.width * Math.clamp(operation.progress, 0.0, 1.0);
+                    height: 100%;
+                    background: @linear-gradient(90deg, #800000 0%, #ff4500 50%, #ffd700 100%);
+                    border-radius: 4px;
+                }
             }
+        }
+    }
+}
+
+// Stack of live operations shown under the top bar.
+component ActiveOperationsPanel inherits Rectangle {
+    in property <[OperationStatus]> operations;
+
+    height: operations.length > 0 ? operations.length * 48px + 8px : 0px;
+    background: transparent;
+
+    VerticalLayout {
+        padding: 4px;
+        spacing: 4px;
+
+        for op in operations: OperationRow {
+            operation: op;
         }
     }
 }
@@ -546,8 +593,7 @@ component AppCard inherits Rectangle {
     callback update-clicked(string);
     callback uninstall-clicked(string);
 
-    min-width: 220px;
-    max-width: 380px;
+    min-width: 200px;
     height: 90px;
     horizontal-stretch: 1;
     vertical-stretch: 0;
@@ -575,14 +621,14 @@ component AppCard inherits Rectangle {
 
         // Icon
         if package.icon.width > 0 : Image {
-            width: 56px;
-            height: 56px;
+            width: 52px;
+            height: 52px;
             source: package.icon;
             image-fit: contain;
         }
         if package.icon.width == 0 : Rectangle {
-            width: 56px;
-            height: 56px;
+            width: 52px;
+            height: 52px;
             background: AppColors.bg-tertiary;
             border-radius: 8px;
             border-width: 1px;
@@ -601,13 +647,14 @@ component AppCard inherits Rectangle {
             horizontal-stretch: 1;
             spacing: 2px;
             alignment: center;
-            
+
             Text {
                 text: package.name;
                 color: AppColors.text-primary;
                 font-size: 14px;
                 font-weight: 700;
                 overflow: elide;
+                wrap: no-wrap;
             }
 
             Text {
@@ -618,19 +665,26 @@ component AppCard inherits Rectangle {
             }
         }
 
-        // Actions
-        HorizontalLayout {
-            spacing: 8px;
-            alignment: end;
+        // Actions — stacked vertically so installed apps keep their name
+        // visible (side-by-side Open+Uninstall used to swallow the whole
+        // card width and elide the title away entirely).
+        VerticalLayout {
+            spacing: 4px;
+            alignment: center;
+
             if package.is-installed: ActionButton {
                 text: "Open";
                 primary: true;
+                height: 27px;
+                min-width: 76px;
                 clicked => {
                     root.open-clicked(package.id);
                 }
             }
             if package.is-installed: ActionButton {
                 text: "Uninstall";
+                height: 27px;
+                min-width: 76px;
                 clicked => {
                     root.uninstall-clicked(package.id);
                 }
@@ -638,6 +692,8 @@ component AppCard inherits Rectangle {
             if !package.is-installed && show-install-button: ActionButton {
                 text: "Install";
                 primary: true;
+                height: 27px;
+                min-width: 76px;
                 clicked => {
                     root.install-clicked(package.id);
                 }
@@ -991,8 +1047,10 @@ component PackageDetailView inherits Rectangle {
     in property <[image]> screenshots;
     in property <image> package-icon;
     in property <bool> has-package-icon;
-    in property <string> installing-package-id;
-    in property <float> install-progress;
+    // Live operation state for THIS package (driven from the operations panel)
+    in property <bool> op-running;
+    in property <bool> op-is-uninstalling;
+    in property <float> op-progress;
     in-out property <int> carousel-offset: 0;
     property <int> screenshot-count: root.screenshots.length;
     property <int> carousel-visible-count: 3; // Fixed number of visible items
@@ -1130,58 +1188,57 @@ component PackageDetailView inherits Rectangle {
                             spacing: 12px;
                             HorizontalLayout {
                                 spacing: 16px;
-                                if (package.id == root.installing-package-id && !package.is-installed): VerticalLayout {
+                                if root.op-running: VerticalLayout {
                                     width: 180px;
                                     alignment: center;
                                     spacing: 4px;
                                     Text {
-                                        text: root.install-progress >= 1.0 ? "Installation Complete" : "Installing " + round(root.install-progress * 100) + "%";
-                                        color: root.install-progress >= 1.0 ? AppColors.accent-primary : AppColors.text-muted;
+                                        text: root.op-progress >= 1.0
+                                            ? (root.op-is-uninstalling ? "Removal Complete" : "Installation Complete")
+                                            : (root.op-is-uninstalling ? "Removing " : "Offering ")
+                                              + Math.round(root.op-progress * 100) + "%";
+                                        color: root.op-progress >= 1.0 ? AppColors.accent-primary : AppColors.text-muted;
                                         font-size: 11px;
                                         horizontal-alignment: center;
                                     }
-                                    ProgressBar {
-                                        progress: root.install-progress;
+                                    Rectangle {
+                                        width: 180px;
+                                        height: 10px;
+                                        background: #1a0505;
+                                        border-radius: 5px;
+                                        clip: true;
+                                        Rectangle {
+                                            width: parent.width * Math.clamp(root.op-progress, 0.0, 1.0);
+                                            height: 100%;
+                                            background: @linear-gradient(90deg, #800000 0%, #ff4500 50%, #ffd700 100%);
+                                            border-radius: 5px;
+                                        }
                                     }
                                 }
-                                if (package.id == root.installing-package-id && package.is-installed): VerticalLayout {
-                                    width: 180px;
-                                    alignment: center;
-                                    spacing: 4px;
-                                    Text {
-                                        text: root.install-progress >= 1.0 ? "Uninstall Complete" : "Uninstalling " + round(root.install-progress * 100) + "%";
-                                        color: root.install-progress >= 1.0 ? AppColors.accent-primary : AppColors.text-muted;
-                                        font-size: 11px;
-                                        horizontal-alignment: center;
-                                    }
-                                    ProgressBar {
-                                        progress: root.install-progress;
-                                    }
-                                }
-                                if !package.is-installed && package.id != root.installing-package-id: ActionButton {
+                                if !package.is-installed && !root.op-running: ActionButton {
                                     text: "Install";
                                     primary: true;
                                     min-width: 130px;
                                     clicked => { root.install-clicked(package.id); }
                                 }
-                                if package.is-installed && package.has-update: ActionButton {
+                                if package.is-installed && package.has-update && !root.op-running: ActionButton {
                                     text: "Update";
                                     primary: true;
                                     min-width: 130px;
                                     clicked => { root.update-clicked(package.id); }
                                 }
-                                if package.is-installed: ActionButton {
+                                if package.is-installed && !root.op-running: ActionButton {
                                     text: "Open";
                                     primary: true;
                                     min-width: 100px;
                                     clicked => { root.open-clicked(package.id); }
                                 }
-                                if package.is-installed && !root.confirm-uninstall && package.id != root.installing-package-id: ActionButton {
+                                if package.is-installed && !root.confirm-uninstall && !root.op-running: ActionButton {
                                     text: "Uninstall";
                                     min-width: 100px;
                                     clicked => { root.confirm-uninstall = true; }
                                 }
-                                if root.confirm-uninstall && package.id != root.installing-package-id: HorizontalLayout {
+                                if root.confirm-uninstall && !root.op-running: HorizontalLayout {
                                     spacing: 8px;
                                     ActionButton {
                                         text: "✓ Confirm";
@@ -1767,8 +1824,8 @@ export component MainWindow inherits Window {
     in-out property <string> db-refresh-status: "";
     // Dynamic columns based on available width — recalculated as the window
     // resizes, so tiling WMs (cosmic maximize/split) get an even grid.
-    // Sidebar (~220px) + content padding (~36px) + one card slot (~250px).
-    property <int> grid-columns: Math.max(1, Math.min(6, Math.floor((self.width - 300px) / 250px)));
+    // Sidebar (~220px) + content padding (~36px) + one card slot (~240px).
+    property <int> grid-columns: Math.max(1, Math.min(6, Math.floor((self.width - 290px) / 240px)));
     in property <[PackageInfo]> category-audio;
     in property <[PackageInfo]> category-video;
     in property <[PackageInfo]> category-development;
@@ -1835,10 +1892,12 @@ export component MainWindow inherits Window {
     in-out property <bool> is-transitioning: false;
     in-out property <float> loading-progress: 0.0;
     in-out property <string> loading-status: "Preparing the Offerings...";
-    in-out property <string> installing-package-id: "";
-    in-out property <string> installing-package-name: "";
-    in-out property <bool> is-uninstalling: false;
-    in-out property <float> install-progress: 0.0;
+    // Live install/uninstall operations (parallel-capable)
+    in-out property <[OperationStatus]> active-operations;
+    // Operation state of the package shown on the detail page
+    in-out property <bool> detail-op-running: false;
+    in-out property <bool> detail-op-uninstalling: false;
+    in-out property <float> detail-op-progress: 0.0;
     
     in-out property <image> selected-package-icon;
     in-out property <bool> has-package-icon: false;
@@ -2167,12 +2226,9 @@ export component MainWindow inherits Window {
                         }
                     }
                 
-                // Global Progress Overlay
-                if root.installing-package-id != "" : GlobalProgressOverlay {
-                    package-name: root.installing-package-name;
-                    progress: root.install-progress;
-                    is-uninstalling: root.is-uninstalling;
-                    height: 60px;
+                // Live operations panel — parallel install/uninstall rows
+                ActiveOperationsPanel {
+                    operations: root.active-operations;
                 }
 
                 // Catalogue refresh progress (real DB-write accounting)
@@ -2597,8 +2653,9 @@ export component MainWindow inherits Window {
         screenshot-index <=> root.current-screenshot-index;
         package-icon: root.selected-package-icon;
         has-package-icon: root.has-package-icon;
-        installing-package-id: root.installing-package-id;
-        install-progress: root.install-progress;
+        op-running: root.detail-op-running;
+        op-is-uninstalling: root.detail-op-uninstalling;
+        op-progress: root.detail-op-progress;
         screenshot-clicked(idx) => {
             root.fullscreen-screenshot-index = idx;
             root.show-screenshot-viewer = true;
