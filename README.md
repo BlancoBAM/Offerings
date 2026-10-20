@@ -10,9 +10,10 @@
 
 **A unified GUI interface for easy desktop app management — designed for Lilith Linux**
 
+![Rust](https://shieldcn.dev/badge/Rust.svg?variant=branded&brand=rust)
 [![Build Status](https://github.com/BlancoBAM/Offerings/actions/workflows/ci.yml/badge.svg)](https://github.com/BlancoBAM/Offerings/actions)
 [![Latest Release](https://img.shields.io/github/v/release/BlancoBAM/Offerings?include_prereleases)](https://github.com/BlancoBAM/Offerings/releases)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+![Runs on Linux](https://shieldcn.dev/badge/Runs%20on-Linux-FCC624.svg?logo=linux&logoColor=000&variant=branded)
 
 </div>
 
