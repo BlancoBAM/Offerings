@@ -18,7 +18,7 @@ push_v2.py
 do_release.sh
 
 # Local workflow docs (not part of the product)
-workflows/
+/workflows/
 
 # IDE/Editor
 .idea/

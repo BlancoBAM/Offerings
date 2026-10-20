@@ -58,21 +58,22 @@
 Works on any Linux distribution, no install needed:
 
 ```bash
-# Grab the latest AppImage from the Releases page
-# (asset name follows Offerings-<version>-<arch>.AppImage, e.g. Offerings-1.4.0-x86_64.AppImage)
-wget https://github.com/BlancoBAM/Offerings/releases/latest/download/Offerings-1.4.0-x86_64.AppImage
-chmod +x Offerings-*.AppImage
-./Offerings-*.AppImage
+wget https://github.com/BlancoBAM/Offerings/releases/latest/download/Offerings-x86_64.AppImage
+chmod +x Offerings-x86_64.AppImage
+./Offerings-x86_64.AppImage
 ```
 
 ### Debian/Ubuntu .deb
 
-Pre-built `.deb` packages are also published on the [Releases page](https://github.com/BlancoBAM/Offerings/releases/latest):
-
 ```bash
-wget https://github.com/BlancoBAM/Offerings/releases/latest/download/offerings_1.4.0-1_amd64.deb
-sudo dpkg -i offerings_*.deb
+wget https://github.com/BlancoBAM/Offerings/releases/latest/download/offerings_amd64.deb
+sudo dpkg -i offerings_amd64.deb
 ```
+
+> **Note:** CI publishes both stable-named assets (shown above, always minted
+> fresh with each release) and versioned ones (`Offerings-<version>-<arch>.AppImage`,
+> `offerings_<version>-1_amd64.deb`) on the [Releases page](https://github.com/BlancoBAM/Offerings/releases/latest).
+> Note that `releases/latest/download` only follows full releases, not pre-releases.
 
 ### Install Script (recommended for Lilith Linux)
 

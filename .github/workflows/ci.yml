@@ -82,6 +82,17 @@ jobs:
         env:
           APPIMAGE_EXTRACT_AND_RUN: 1
 
+      - name: Prepare stable-named release assets
+        run: |
+          mkdir -p release-assets
+          for img in dist/Offerings-*.AppImage; do
+            [ -e "$img" ] && cp "$img" release-assets/Offerings-x86_64.AppImage
+          done
+          for deb in target/debian/offerings_*.deb; do
+            [ -e "$deb" ] && cp "$deb" release-assets/offerings_amd64.deb
+          done
+          ls -l release-assets/
+
       - name: List artifacts
         run: |
           echo "=== DEB files ==="
@@ -110,8 +121,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            target/debian/*.deb
+            release-assets/*
             dist/*.AppImage
+            target/debian/*.deb
           generate_release_notes: true
           draft: false
           prerelease: ${{ contains(github.ref_name, 'rc') || contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') }}
@@ -122,13 +134,15 @@ jobs:
 
             **AppImage** (works on any Linux, no install needed):
             ```bash
-            chmod +x Offerings-*.AppImage
-            ./Offerings-*.AppImage
+            wget https://github.com/BlancoBAM/Offerings/releases/latest/download/Offerings-x86_64.AppImage
+            chmod +x Offerings-x86_64.AppImage
+            ./Offerings-x86_64.AppImage
             ```
 
             **Debian/Ubuntu .deb**:
             ```bash
-            sudo dpkg -i offerings_*.deb
+            wget https://github.com/BlancoBAM/Offerings/releases/latest/download/offerings_amd64.deb
+            sudo dpkg -i offerings_amd64.deb
             ```
 
             **Install script** (recommended for Lilith Linux):
